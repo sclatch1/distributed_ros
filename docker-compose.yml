@@ -1,0 +1,43 @@
+services:
+  ros-master:
+    image: ros:noetic
+    container_name: ros-master
+    command: roscore
+    networks: [rosnet]
+    environment:
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROS_HOSTNAME=ros-master
+
+  coordinator:
+    build:
+      context: .
+      dockerfile: coordinator_docker/Dockerfile
+    container_name: coordinator
+    depends_on:
+      - ros-master
+    networks: [rosnet]
+
+  robot1:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot1
+    depends_on:
+      - ros-master
+    networks: [rosnet]
+    environment:
+      - ROBOT_NAME=robot1
+  robot2:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot2
+    depends_on:
+      - ros-master
+    networks: [rosnet]
+    environment:
+      - ROBOT_NAME=robot2
+
+networks:
+  rosnet:
+    driver: bridge
