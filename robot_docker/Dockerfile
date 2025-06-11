@@ -17,20 +17,16 @@ RUN /bin/bash -lc "source /opt/ros/noetic/setup.bash && \
     cd src && \
     catkin_init_workspace"
 
-# 3. Create the robot_pkg package
+# 3. Add shared robot_msgs package
+COPY robot_msgs src/robot_msgs
+
+# 4. Create the robot_pkg package
 RUN /bin/bash -lc "source /opt/ros/noetic/setup.bash && \
     cd src && \
-    catkin_create_pkg robot_pkg rospy std_msgs message_generation && \
-    mkdir -p robot_pkg/scripts robot_pkg/msg"
+    catkin_create_pkg robot_pkg rospy std_msgs && \
+    mkdir -p robot_pkg/scripts"
 
-# 4. Add the NumpyArray.msg definition
-COPY NumpyArray.msg src/robot_pkg/msg/NumpyArray.msg
-
-COPY DropTask.msg src/robot_pkg/msg/DropTask.msg
-COPY DropTaskArray.msg src/robot_pkg/msg/DropTaskArray.msg
-
-
-# 5. Copy your node script
+# 5. Copy robot node and scripts
 COPY robot_node.py src/robot_pkg/scripts/robot_node.py
 RUN chmod +x src/robot_pkg/scripts/robot_node.py
 
@@ -40,25 +36,24 @@ COPY pso.py src/robot_pkg/scripts/pso.py
 COPY fitness_ea.py src/robot_pkg/scripts/fitness_ea.py
 COPY fitness_eu.py src/robot_pkg/scripts/fitness_eu.py
 COPY table.py src/robot_pkg/scripts/table.py
+COPY utilities.py src/robot_pkg/scripts/utilities.py
 COPY lookup_table.pkl src/robot_pkg/scripts/lookup_table.pkl
 
-# copy CMakeLists.txt
+# 6. Copy CMakeLists.txt
 COPY robot_docker/CMakeLists.txt src/robot_pkg/CMakeLists.txt
 
+# 7. Patch package.xml to depend on robot_msgs
+RUN /bin/bash -lc "sed -i '/<\/package>/i <depend>robot_msgs</depend>' src/robot_pkg/package.xml"
 
-# 7. Patch package.xml
+# 8. Build the workspace (messages first, then robot_pkg)
 RUN /bin/bash -lc "\
-    sed -i '/<\/package>/i <build_depend>message_generation</build_depend>' src/robot_pkg/package.xml && \
-    sed -i '/<\/package>/i <exec_depend>message_runtime</exec_depend>' src/robot_pkg/package.xml"
-
-# 8. Build the workspace
-RUN /bin/bash -lc "source /opt/ros/noetic/setup.bash && \
+    source /opt/ros/noetic/setup.bash && \
     cd /root/catkin_ws && \
     catkin_make"
 
-# 9. Environment and entrypoint
+# 9. Source environment and launch node
 ENV ROS_MASTER_URI=http://ros-master:11311
-ENTRYPOINT ["/bin/bash","-c","\
+ENTRYPOINT ["/bin/bash", "-c", "\
     source /opt/ros/noetic/setup.bash && \
     source /root/catkin_ws/devel/setup.bash && \
     rosrun robot_pkg robot_node.py"]

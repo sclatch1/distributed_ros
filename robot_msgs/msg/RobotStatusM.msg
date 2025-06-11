@@ -1,0 +1,3 @@
+string robot_name
+geometry_msgs/Point position
+float64 battery

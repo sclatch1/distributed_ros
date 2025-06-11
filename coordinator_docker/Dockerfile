@@ -23,11 +23,10 @@ RUN /bin/bash -lc "source /opt/ros/noetic/setup.bash && \
     catkin_create_pkg coordinator_pkg rospy std_msgs message_generation && \
     mkdir -p coordinator_pkg/scripts coordinator_pkg/msg"
 
-# 4. Add the NumpyArray.msg definition
-COPY NumpyArray.msg src/coordinator_pkg/msg/NumpyArray.msg
 
-COPY DropTask.msg src/coordinator_pkg/msg/DropTask.msg
-COPY DropTaskArray.msg src/coordinator_pkg/msg/DropTaskArray.msg
+
+COPY robot_msgs src/robot_msgs
+
 
 
 # 5. Copy your node script
@@ -40,16 +39,16 @@ COPY pso.py src/coordinator_pkg/scripts/pso.py
 COPY fitness_ea.py src/coordinator_pkg/scripts/fitness_ea.py
 COPY fitness_eu.py src/coordinator_pkg/scripts/fitness_eu.py
 COPY table.py src/coordinator_pkg/scripts/table.py
+COPY utilities.py src/coordinator_pkg/scripts/utilities.py
 COPY lookup_table.pkl src/coordinator_pkg/scripts/lookup_table.pkl
+
 
 # copy CMakeLists.txt
 COPY coordinator_docker/CMakeLists.txt src/coordinator_pkg/CMakeLists.txt
 
 
 # 7. Patch package.xml
-RUN /bin/bash -lc "\
-    sed -i '/<\/package>/i <build_depend>message_generation</build_depend>' src/coordinator_pkg/package.xml && \
-    sed -i '/<\/package>/i <exec_depend>message_runtime</exec_depend>' src/coordinator_pkg/package.xml"
+RUN /bin/bash -lc "sed -i '/<\/package>/i <depend>robot_msgs</depend>' src/coordinator_pkg/package.xml"
 
 # 8. Build the workspace
 RUN /bin/bash -lc "source /opt/ros/noetic/setup.bash && \
