@@ -22,10 +22,9 @@ def PSO_Algorithm(MAX_ITERATIONS, SWARM_SIZE, M, N, s, iterationstop,
     C2 = 2
     W = 0.9    
     if len(init_swarm) == 0 :
-
         swarm = initialize_swarm(SWARM_SIZE,M,N)
     else:
-        swarm = init_swarm
+        swarm = copy.deepcopy(init_swarm)
     # Initialize best particle
     best_particle = swarm[0]
     if s == 1:

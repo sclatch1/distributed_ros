@@ -22,3 +22,7 @@ def write_np_to_file(array, filename:str, folder) -> None:
     elif array.ndim == 1:
         array = array.reshape(1, -1)
     np.savetxt(filepath, array, fmt='%d', delimiter=' ')
+
+def write_to_file(input , filename: str) -> None:
+    with open('data/' + filename + '.txt', 'w') as f:
+        f.write(str(input))

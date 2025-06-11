@@ -115,11 +115,5 @@ def mvo_exploration(
         if unique_count < 50:
             break
 
-    # Final write-out
-    #write_np_to_file(universes, "final_universe", "etc")
-    
-    print(universes)
-
-    write_np_to_file(universes, "mvo_universe", "data")
 
     return best_fit, fitness_history, universes

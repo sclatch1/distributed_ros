@@ -21,7 +21,7 @@ from robot_msgs.srv import RobotStatus
 from dataclasses import dataclass
 from typing import List, Tuple
 
-from utilities import log_coordinator_timing
+from utilities import log_coordinator_timing, write_to_file, write_np_to_file
 
 E_ELEC = 50e-9     # energy per bit for electronics (J)
 E_AMP = 100e-12    # energy per bit per m^2 (J)
@@ -108,12 +108,22 @@ def coordinator_node():
             robot_charge_duration, robots_coord, tasks, 
             Charging_station, CHARGING_TIME, Energy_Harvesting_Rate)
     
+
+    pso_s1 = time.time()
+    best_fitness_pso = exploitation(MAX_ITERATIONS, len(universes), M, N, 1, robot_charge_duration, robots_coord, tasks, 
+            Charging_station, CHARGING_TIME, Energy_Harvesting_Rate)
+    pso_s2 = time.time()
+    pso_s = pso_s2 - pso_s1
     
+    print(f"this is pso solo best fitness: {best_fitness_pso} with time: {pso_s}")
+
+
     pso1_c = time.time()
     best_fitness = exploitation(MAX_ITERATIONS, len(universes), M, N, 1, robot_charge_duration, robots_coord, tasks, 
             Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, universes)
     pso2_c = time.time()
     pso_c = pso2_c - pso1_c
+
     
     CSV_FILE = 'data/coord_timing_central.csv'
     log_coordinator_timing(pso_time=pso_c, CSV_FILE=CSV_FILE)
@@ -148,7 +158,6 @@ def coordinator_node():
     
 
     array_allocation = allocate_exploration(COORDS, robots_coord, 50, 50)
-
 
     send_universe_arrays_per_robot(universes, array_allocation, len(tasks), robots_info)
 
@@ -230,6 +239,7 @@ def init_enivornment(robots_info: List[RobotStatusInfo]):
     robot_charge_duration = [(r.battery / 100.0) * 20 * 3600 for r in robots_info]
     robots_coord = coords
 
+
     
 
     return MAX_ITERATIONS, SWARM_SIZE, M, N,robot_charge_duration, robots_coord, tasks, Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, tasks
@@ -292,13 +302,14 @@ def explore(MAX_ITERATIONS, swarm_size, M, N, s, robot_charge_duration, robots_c
             CHARGING_TIME=CHARGING_TIME,
             Energy_Harvesting_Rate=Energy_Harvesting_Rate
         )
+    
 
     return init_swarm
 
 
 
 def exploitation(MAX_ITERATIONS, swarm_size, M, N, s, robot_charge_duration, robots_coord, task, 
-            Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, init_swarm):
+            Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, init_swarm=[]):
     
 
     best_PSOEA, _ = PSO_Algorithm(

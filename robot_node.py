@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass
 from typing import Tuple
 
-from utilities import log_coordinator_timing
+from utilities import log_coordinator_timing, write_to_file, write_np_to_file
 
 # Get robot-specific environment variables
 robot_name = os.environ.get("ROBOT_NAME", "robot")
@@ -52,6 +52,8 @@ def task_callback(msg):
 def universe_callback(msg):
     rospy.loginfo("Received universe array")
     universes = np.array(msg.universe).reshape((msg.rows, msg.cols))
+
+
     global cached_universe
     global universe_are_cached
     universe_are_cached = True
@@ -62,7 +64,6 @@ def universe_callback(msg):
 
         val = FitnessValue(fitness=best)
         rospy.loginfo(f"publishing best fitness of {robot_name}")
-        print(val)
         fitness_pub.publish(val)
         rospy.loginfo(f"[{robot_name}] /fitness_value publisher connections: {fitness_pub.get_num_connections()}")
 
@@ -87,16 +88,7 @@ def handle_status_request(req):
     res.battery = battery_level
     return res
 
-"""
-def check_and_run(event):
-    if robot_status_are_cached and universe_are_cached and tasks_are_cached:
-        rospy.loginfo("All data cached — running PSO.")
-        best = run_explotation()
-        pub = rospy.Publisher('/fitness_value', FitnessValue, queue_size=1)
-        val = FitnessValue(fitness=best)
-        pub.publish(val)
-        check_timer.shutdown()    # stop checking
-"""
+
 
 def robot_node():
     rospy.init_node('robot_node', anonymous=True)
@@ -140,16 +132,17 @@ def run_explotation():
     N = len(cached_robot_statuses)  # number of robots
     M = 50  # number of tasks
     
-    robot_charge_duration = [(r.battery / 100.0) * 20 * 3600 for r in cached_robot_statuses]
+
 
     robot_charge_duration = []
     robots_coord = []
     for r in cached_robot_statuses:
         bat = (r.battery / 100.0) * 20 * 3600
         robot_charge_duration.append(bat)
-        point = (r.position.x, r.position.y)
+        point = [r.position.x, r.position.y]
         robots_coord.append(point)
 
+    robots_coord = np.array(robots_coord)
 
     pso1_d = time.time()
     best_fitness , _ = PSO_Algorithm(MAX_ITERATIONS,len(cached_universe),M,N,s,iterationstop,robot_charge_duration,robots_coord,cached_tasks,Charging_station,CHARGING_TIME, Energy_Harvesting_Rate, cached_universe)
@@ -159,7 +152,7 @@ def run_explotation():
     CSV_FILE = 'data/coord_timing_distributed.csv'
     log_coordinator_timing(pso_d, CSV_FILE)
 
-    rospy.loginfo(f"time pso distributed {pso_d}")
+    rospy.loginfo(f"time pso distributed {pso_d} and best fitness {best_fitness}")
 
     return best_fitness
 
