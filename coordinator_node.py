@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import os
-# import py_make_goal_client.src.make_plan_client as make_plan_client
-import random
 import matplotlib.pyplot as plt
 import numpy as np
 import time
@@ -13,8 +11,8 @@ from pso import PSO_Algorithm
 
 
 import rospy
-from std_msgs.msg import String
-from robot_msgs.msg import DropTask, DropTaskArray, UniverseArray, RobotStatusArray, RobotStatusM, FitnessValue
+from std_msgs.msg import Header, Int32
+from robot_msgs.msg import DropTask, DropTaskArray, UniverseArray, RobotStatusArray, RobotStatusM, FitnessValue, Parameters
 from geometry_msgs.msg import Point
 from robot_msgs.srv import RobotStatus
 
@@ -32,6 +30,12 @@ BITS_PER_BYTE = 8
 COORDS = (0,0)
 
 current_best = 10000
+
+explore = os.getenv("EXPLORE", "false").lower() == "true"
+distributed = os.getenv("DISTRIBUTED", "false").lower() == "true"
+
+
+fitness_count = 0
 
 @dataclass
 class RobotStatusInfo:
@@ -66,150 +70,173 @@ def get_robot_info():
     
     return robots_info
 
-def get_task(M, coords):
-    task = []
-    for _ in range(M):
-        drop_initial = random.choice(coords)
-        order = "parallel"
-        drop_target = random.choice(coords)
-        tasks = {
-            "drop_initial_coordination": drop_initial,
-            "order": order,
-            "drop_target_coordination": drop_target,
+def task_callback(msg):
+    rospy.loginfo("Received task array")
+    global cached_tasks
+    global tasks_are_cached
+    tasks_are_cached = True
+    tasks = []
+    for t in msg.tasks:
+        task = {
+            "drop_initial_coordination" : (t.drop_initial_coordination.x, t.drop_initial_coordination.y),
+            "order" : t.order,
+            "drop_target_coordination" : (t.drop_target_coordination.x, t.drop_target_coordination.y)
         }
-        task.append(tasks)
-    return task
+        tasks.append(task) 
+    cached_tasks = tasks
 
 def fitness_value_callback(msg):
     global current_best
+
     if current_best > msg.fitness:
         current_best = msg.fitness
 
     rospy.loginfo(f"current best_fitness is {current_best}")
     rospy.loginfo(f"best_fitness is {msg.fitness}")
 
+    global fitness_count
+    fitness_count += 1
+
+    if fitness_count == 6:
+        recv_time = rospy.Time.now()
+        send_time = msg.header.stamp
+        communication_robot_status = (recv_time - send_time).to_sec()
+        rospy.loginfo(f"getting robot status in {communication_robot_status}s")
+        #rospy.signal_shutdown("All fitness values received.")
+
+
+
 def coordinator_node():
     rospy.init_node('coordinator_node')
-    task_pub = rospy.Publisher('/robot_tasks', DropTaskArray, queue_size=10)
-    status_pub = rospy.Publisher('/robot_statuses', RobotStatusArray, queue_size=10)
-    rospy.Subscriber('/fitness_value', FitnessValue, fitness_value_callback)
-    rospy.sleep(1)  # Allow time for registration
-
-    robots_info = get_robot_info()
-
     
-    MAX_ITERATIONS, SWARM_SIZE, M, N, \
-    robot_charge_duration, robots_coord, tasks, \
-    Charging_station, CHARGING_TIME, Energy_Harvesting_Rate,\
-    tasks = init_enivornment(robots_info)
-    
+    m_pub = rospy.Publisher('/task_count', Int32, queue_size=1)
 
-    universes = explore(MAX_ITERATIONS, SWARM_SIZE, M, N, 1,
-            robot_charge_duration, robots_coord, tasks, 
-            Charging_station, CHARGING_TIME, Energy_Harvesting_Rate)
-    
+    rospy.Subscriber('robot_tasks', DropTaskArray, task_callback)
+    rospy.sleep(1)
 
-    pso_s1 = time.time()
-    best_fitness_pso = exploitation(MAX_ITERATIONS, len(universes), M, N, 1, robot_charge_duration, robots_coord, tasks, 
-            Charging_station, CHARGING_TIME, Energy_Harvesting_Rate)
-    pso_s2 = time.time()
-    pso_s = pso_s2 - pso_s1
-    
-    print(f"this is pso solo best fitness: {best_fitness_pso} with time: {pso_s}")
+    if distributed:
+            rospy.Subscriber('/fitness_value', FitnessValue, fitness_value_callback)
+    M = 50
+    for _ in range(10):
+        
+        m_pub.publish(Int32(data=M))
+
+        
+        
+
+        robots_info = get_robot_info()
+
+        print(f"lenght of cached takss            {len(cached_tasks)}")
+        
+        MAX_ITERATIONS, SWARM_SIZE, N, \
+        robot_charge_duration, robots_coord, \
+        Charging_station, CHARGING_TIME, Energy_Harvesting_Rate,\
+        = init_enivornment(robots_info)
+
+        if len(cached_tasks) > 0:
+            universes = explore(MAX_ITERATIONS, SWARM_SIZE, M, N, 1,
+                    robot_charge_duration, robots_coord, cached_tasks, 
+                    Charging_station, CHARGING_TIME, Energy_Harvesting_Rate)
+        
+
+        pso_s1 = time.time()
+        best_fitness_pso = exploitation(MAX_ITERATIONS, len(universes), M, N, 1, robot_charge_duration, robots_coord, cached_tasks, 
+                Charging_station, CHARGING_TIME, Energy_Harvesting_Rate)
+        pso_s2 = time.time()
+        pso_s = pso_s2 - pso_s1
+        
+        print(f"this is pso solo best fitness: {best_fitness_pso} with time: {pso_s}")
 
 
-    pso1_c = time.time()
-    best_fitness = exploitation(MAX_ITERATIONS, len(universes), M, N, 1, robot_charge_duration, robots_coord, tasks, 
-            Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, universes)
-    pso2_c = time.time()
-    pso_c = pso2_c - pso1_c
+        pso1_c = time.time()
+        best_fitness = exploitation(MAX_ITERATIONS, len(universes), M, N, 1, robot_charge_duration, robots_coord, cached_tasks, 
+                Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, universes)
+        pso2_c = time.time()
+        pso_c = pso2_c - pso1_c
 
-    
-    CSV_FILE = 'data/coord_timing_central.csv'
-    log_coordinator_timing(pso_time=pso_c, CSV_FILE=CSV_FILE)
+        
+        CSV_FILE = 'data/coord_timing_central.csv'
+        log_coordinator_timing(pso_time=pso_c, CSV_FILE=CSV_FILE)
 
 
-    rospy.loginfo(f"best fitness centralised: {best_fitness} and time {pso_c}")
+        rospy.loginfo(f"best fitness centralised: {best_fitness} and time {pso_c}")
 
-    robot_status_array = RobotStatusArray()
+        if distributed:
+            array_allocation = allocate_exploration(COORDS, robots_coord, 50, 50)
+
+            send_parameters(robots_info, cached_tasks, universes, array_allocation, num_cols=M)
+
+        M = M + 5
+    rospy.spin()
+
+
+def send_parameters(robots_info, tasks, universes, array_allocation, num_cols):
+    robot_status_array = []
     for s in robots_info:
         robot_status = RobotStatusM()
         robot_status.robot_name = s.name
         robot_status.position = Point(x=s.position[0], y=s.position[1], z=0.0)
         robot_status.battery = s.battery
-        robot_status_array.status.append(robot_status)
-
-
-    rospy.loginfo("sending robot statuses")
-    status_pub.publish(robot_status_array)
-
-    rospy.sleep(1)
-
-    task_array_msg = DropTaskArray()
+        robot_status_array.append(robot_status)
+    
+    task_array_msg =[ ]
     for t in tasks:
         task_msg = DropTask()
         task_msg.drop_initial_coordination = Point(x=t['drop_initial_coordination'][0], y=t['drop_initial_coordination'][1], z=0.0)
         task_msg.drop_target_coordination = Point(x=t['drop_target_coordination'][0], y=t['drop_target_coordination'][1], z=0.0)
         task_msg.order = t['order']
-        task_array_msg.tasks.append(task_msg)
-
-    rospy.loginfo("Publishing task list once...")
-    task_pub.publish(task_array_msg)
-    
-
-    array_allocation = allocate_exploration(COORDS, robots_coord, 50, 50)
-
-    send_universe_arrays_per_robot(universes, array_allocation, len(tasks), robots_info)
+        task_array_msg.append(task_msg)
 
 
-
-    rospy.spin()
-
-
-def send_universe_arrays_per_robot(universes, array_allocation, num_cols, robot_info):
-    """
-    Split universe data per robot based on allocation and publish individually.
-    """
     num_allocated_total = sum(array_allocation)
     assert num_allocated_total <= len(universes), "Allocations exceed universe size"
 
     # Initialize all publishers once
     publishers = {}
-    for robot in robot_info:
-        topic = f"/{robot.name}/universe"
-        publishers[robot.name] = rospy.Publisher(topic, UniverseArray, queue_size=10)
+    for robot in robots_info:
+        topic = f"/{robot.name}/parameters"
+        publishers[robot.name] = rospy.Publisher(topic, Parameters, queue_size=10)
     
-    rospy.sleep(1)  # give time for subscribers to connect
+
 
     flat_index = 0  # pointer in universes
-    for i, robot in enumerate(robot_info):
+    for i, robot in enumerate(robots_info):
         rows = array_allocation[i]
         universe_slice = universes[flat_index:flat_index + rows]
         flat_index += rows
 
         # Flatten the 2D slice into 1D
-        flat_data = [cell for row in universe_slice for cell in row]
+        flat_data = [int(cell) for row in universe_slice for cell in row]
 
         # Create UniverseArray message
-        msg = UniverseArray()
+        msg = Parameters()
         msg.universe = flat_data
         msg.rows = rows
         msg.cols = num_cols
+
+        msg.status = robot_status_array
+        msg.tasks = task_array_msg
 
         pub = publishers[robot.name]
 
         # Wait for at least one subscriber
         while pub.get_num_connections() == 0:
-            rospy.logwarn(f"Waiting for subscriber on /{robot.name}/universe...")
-            rospy.sleep(0.2)
+            rospy.logwarn(f"Waiting for subscriber on {robot.name}/parameters...")
+            rospy.sleep(0.05)
 
-        rospy.loginfo(f"Publishing {rows}x{num_cols} universe to {robot.name}")
+        rospy.loginfo(f"Publishing {rows}x{num_cols} universe and tasks and status to {robot.name}")
+        
+        msg.header = Header(stamp=rospy.Time.now())
         pub.publish(msg)
+        
+
+    
 
    
 
 def init_enivornment(robots_info: List[RobotStatusInfo]):
     # Use actual coordinates from robots_info instead of hardcoded coords
+    print("initializing environment ...")
     coords = np.array([r.position for r in robots_info])
 
     S = 1  # number of Charge stations
@@ -229,9 +256,9 @@ def init_enivornment(robots_info: List[RobotStatusInfo]):
 
 
     N = len(robots_info)  # number of robots
-    M = 50  # number of tasks
+    M = len(cached_tasks)
 
-    tasks = get_task(M,coords)
+
 
 
     # Instead of random charge duration, calculate from battery percentage
@@ -242,7 +269,7 @@ def init_enivornment(robots_info: List[RobotStatusInfo]):
 
     
 
-    return MAX_ITERATIONS, SWARM_SIZE, M, N,robot_charge_duration, robots_coord, tasks, Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, tasks
+    return MAX_ITERATIONS, SWARM_SIZE, N,robot_charge_duration, robots_coord, Charging_station, CHARGING_TIME, Energy_Harvesting_Rate
 
 def compute_message_size(num_candidates, num_arrays):
     """Returns total message size in bytes"""
@@ -275,6 +302,7 @@ def allocate_exploration(central_position, robot_positions, num_candidates, tota
     # Compute message sizes for the allocated arrays
     message_sizes_bytes = [compute_message_size(num_candidates, a) for a in array_allocations]
 
+    """
     # Output results
     for i, (d, e, w, a, sz) in enumerate(zip(distances, energy_costs, weights, array_allocations, message_sizes_bytes)):
         print(f"Robot {i+1}:")
@@ -283,7 +311,7 @@ def allocate_exploration(central_position, robot_positions, num_candidates, tota
         print(f"  Allocation weight: {w:.2f}")
         print(f"  Arrays assigned: {a}")
         print(f"  Message size: {sz} bytes\n")
-
+    """
     return array_allocations
 
 

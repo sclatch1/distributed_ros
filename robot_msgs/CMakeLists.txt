@@ -20,6 +20,7 @@ add_message_files(
   RobotStatusArray.msg
   RobotStatusM.msg
   FitnessValue.msg
+  Parameters.msg
 )
 
 generate_messages(

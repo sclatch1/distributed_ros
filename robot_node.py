@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 import rospy
-from robot_msgs.msg import DropTaskArray, UniverseArray, RobotStatusArray, FitnessValue
+from robot_msgs.msg import DropTaskArray, UniverseArray, RobotStatusArray, FitnessValue, Parameters
 from geometry_msgs.msg import Point
 from robot_msgs.srv import RobotStatus, RobotStatusResponse
+from std_msgs.msg import Header
+
 import os
 import numpy as np
+
 from pso import PSO_Algorithm
 import time
 
@@ -31,11 +34,11 @@ class RobotStatusInfo:
 
 
 
-def task_callback(msg):
+def cach_task(msg):
     rospy.loginfo("Received task array")
     global cached_tasks
-    global tasks_are_cached
-    tasks_are_cached = True
+
+
     tasks = []
     for t in msg.tasks:
         task = {
@@ -49,34 +52,53 @@ def task_callback(msg):
 
 
 
-def universe_callback(msg):
+def cach_universe(msg):
     rospy.loginfo("Received universe array")
     universes = np.array(msg.universe).reshape((msg.rows, msg.cols))
 
-
     global cached_universe
-    global universe_are_cached
-    universe_are_cached = True
     cached_universe = universes
-    if robot_status_are_cached and tasks_are_cached and universe_are_cached:
-        rospy.loginfo("All data cached — running PSO.")
-        best = run_explotation()
-
-        val = FitnessValue(fitness=best)
-        rospy.loginfo(f"publishing best fitness of {robot_name}")
-        fitness_pub.publish(val)
-        rospy.loginfo(f"[{robot_name}] /fitness_value publisher connections: {fitness_pub.get_num_connections()}")
-
-        rospy.sleep(1)
 
 
-def robot_status_callback(msg):
-    rospy.loginfo("getting robot status")
+        
+
+
+def cach_robot_status(msg):
     global robot_status_are_cached
     robot_status_are_cached = True
     global cached_robot_statuses
     cached_robot_statuses = msg.status
+
+
+
+
+def parameters_callback(msg):
+    recv_time = rospy.Time.now()
+    send_time = msg.header.stamp
+    communication_robot_status = (recv_time - send_time).to_sec()
+    rospy.loginfo(f"getting robot status in {communication_robot_status}s")
     
+    # cached the tasks in cached_tasks global variable
+    cach_task(msg)
+    cach_robot_status(msg)
+    cach_universe(msg)
+
+    rospy.loginfo("All data cached — running PSO.")
+    best = run_explotation()
+
+    val = FitnessValue(fitness=best)
+    fitness_pub = rospy.Publisher('/fitness_value', FitnessValue, queue_size=1)
+    
+    while fitness_pub.get_num_connections() == 0:
+        rospy.logwarn(f"Waiting for subscriber on /{robot_name}/fitness.")
+        rospy.sleep(0.05)
+
+    rospy.loginfo(f"publishing best fitness of {robot_name}")
+    val.header = Header(stamp=rospy.Time.now())
+    fitness_pub.publish(val)
+    rospy.loginfo(f"[{robot_name}] /fitness_value publisher connections: {fitness_pub.get_num_connections()}")
+    #rospy.signal_shutdown("fitness value sent. Shutting down")
+
 
 
 
@@ -100,17 +122,9 @@ def robot_node():
 
 
 
-    rospy.Subscriber('/robot_statuses', RobotStatusArray, robot_status_callback)
+    rospy.Subscriber(f'/{robot_name}/parameters', Parameters , parameters_callback)
+    rospy.loginfo(f"[{robot_name}] subscribe to /{robot_name}/parameters")
 
-
-    # Subscriber for tasks
-    rospy.Subscriber('/robot_tasks', DropTaskArray, task_callback)
-
-    rospy.Subscriber(f'/{robot_name}/universe', UniverseArray , universe_callback)
-    global fitness_pub
-    fitness_pub = rospy.Publisher('/fitness_value', FitnessValue, queue_size=1)
-
-    rospy.spin()
 
     rospy.loginfo(f"[{robot_name}] Node is running. Position: ({robot_x}, {robot_y}), Battery: {battery_level}%")
     rospy.spin()
@@ -130,7 +144,7 @@ def run_explotation():
     MAX_ITERATIONS = 50
 
     N = len(cached_robot_statuses)  # number of robots
-    M = 50  # number of tasks
+    M = len(cached_tasks)  # number of tasks
     
 
 

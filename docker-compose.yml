@@ -18,8 +18,23 @@ services:
     networks: [ rosnet ]
     environment:
       - PYTHONUNBUFFERED=1
+      - DISTRIBUTED=${DISTRIBUTED}
+      - EXPLORE=${EXPLORE}
     volumes:
       - ~/Desktop/coordinator_data:/root/catkin_ws/data
+
+
+  tasknode:
+    build:
+      context: .
+      dockerfile: task_docker/Dockerfile
+    container_name: tasknode
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - PYTHONUNBUFFERED=1
+  
 
 
   robot1:
