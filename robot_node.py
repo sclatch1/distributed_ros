@@ -3,18 +3,19 @@ import rospy
 from robot_msgs.msg import DropTaskArray, UniverseArray, RobotStatusArray, FitnessValue, Parameters
 from geometry_msgs.msg import Point
 from robot_msgs.srv import RobotStatus, RobotStatusResponse
-from std_msgs.msg import Header
+
 
 import os
 import numpy as np
 
 from pso import PSO_Algorithm
+from ga import genetic_algorithm
 import time
 
 from dataclasses import dataclass
 from typing import Tuple
 
-from utilities import log_coordinator_timing, write_to_file, write_np_to_file
+from utilities import log_coordinator_timing
 
 # Get robot-specific environment variables
 robot_name = os.environ.get("ROBOT_NAME", "robot")
@@ -22,9 +23,10 @@ robot_x = float(os.environ.get("ROBOT_X", "0.0"))
 robot_y = float(os.environ.get("ROBOT_Y", "0.0"))
 battery_level = float(os.environ.get("BATTERY", "100.0"))
 
-robot_status_are_cached = False
-universe_are_cached = False
-tasks_are_cached = False
+fitness_pub = None
+
+
+
 
 @dataclass
 class RobotStatusInfo:
@@ -35,7 +37,7 @@ class RobotStatusInfo:
 
 
 def cach_task(msg):
-    rospy.loginfo("Received task array")
+    #rospy.loginfo("Received task array")
     global cached_tasks
 
 
@@ -53,11 +55,12 @@ def cach_task(msg):
 
 
 def cach_universe(msg):
-    rospy.loginfo("Received universe array")
+    #rospy.loginfo(f"Received universe array with universe len(msg.universe)")
     universes = np.array(msg.universe).reshape((msg.rows, msg.cols))
 
     global cached_universe
     cached_universe = universes
+    return True
 
 
         
@@ -73,37 +76,50 @@ def cach_robot_status(msg):
 
 
 def parameters_callback(msg):
+    global m
+    global cached_tasks, cached_universe, cached_robot_statuses
+    cached_tasks, cached_universe, cached_robot_statuses = None, None, None
     recv_time = rospy.Time.now()
     send_time = msg.header.stamp
     communication_robot_status = (recv_time - send_time).to_sec()
-    rospy.loginfo(f"getting robot status in {communication_robot_status}s")
-    
+    #rospy.loginfo(f"getting robot status in {communication_robot_status}s")
+
+
     # cached the tasks in cached_tasks global variable
     cach_task(msg)
     cach_robot_status(msg)
-    cach_universe(msg)
+    cached = cach_universe(msg)
+    m = msg.m
+    i = msg.i
+    j = msg.j
+    #rospy.loginfo(f"got parameters for {robot_name} will start explotation with m = {m}")
+    best, start_time = run_explotation(cached)
 
-    rospy.loginfo("All data cached — running PSO.")
-    best = run_explotation()
+    cached = False
 
     val = FitnessValue(fitness=best)
-    fitness_pub = rospy.Publisher('/fitness_value', FitnessValue, queue_size=1)
+
     
     while fitness_pub.get_num_connections() == 0:
         rospy.logwarn(f"Waiting for subscriber on /{robot_name}/fitness.")
         rospy.sleep(0.05)
 
-    rospy.loginfo(f"publishing best fitness of {robot_name}")
-    val.header = Header(stamp=rospy.Time.now())
+    #rospy.loginfo(f"publishing best fitness of {robot_name}")
+    val.communication = rospy.Time.now()
+    val.start_time = start_time
+    val.m = m
+    val.j = j
+    val.i = i
     fitness_pub.publish(val)
-    rospy.loginfo(f"[{robot_name}] /fitness_value publisher connections: {fitness_pub.get_num_connections()}")
+    #rospy.loginfo(f"[{robot_name}] /fitness_value publisher connections: {fitness_pub.get_num_connections()}")
+ 
     #rospy.signal_shutdown("fitness value sent. Shutting down")
 
 
 
 
 def handle_status_request(req):
-    rospy.loginfo(f"[{robot_name}] Status requested.")
+    #rospy.loginfo(f"[{robot_name}] Status requested.")
     res = RobotStatusResponse()
     res.robot_name = robot_name
     res.position = Point(x=robot_x, y=robot_y, z=0.0)
@@ -118,20 +134,19 @@ def robot_node():
     # Service server: /get_robot_status_<robot_name>
     service_name = f"/get_robot_status_{robot_name}"
     rospy.Service(service_name, RobotStatus, handle_status_request)
-    rospy.loginfo(f"[{robot_name}] Ready to respond on service {service_name}")
+    #rospy.loginfo(f"[{robot_name}] Ready to respond on service {service_name}")
 
 
 
     rospy.Subscriber(f'/{robot_name}/parameters', Parameters , parameters_callback)
-    rospy.loginfo(f"[{robot_name}] subscribe to /{robot_name}/parameters")
+    #rospy.loginfo(f"[{robot_name}] subscribe to /{robot_name}/parameters")
+    global fitness_pub
+    fitness_pub = rospy.Publisher('/fitness_value', FitnessValue, queue_size=10)
 
-
-    rospy.loginfo(f"[{robot_name}] Node is running. Position: ({robot_x}, {robot_y}), Battery: {battery_level}%")
+    #rospy.loginfo(f"[{robot_name}] Node is running. Position: ({robot_x}, {robot_y}), Battery: {battery_level}%")
     rospy.spin()
 
-def run_explotation():
-    print("running explotation")
-    s = 1  # number of Charge stations
+def run_explotation(cached):
     Energy_Harvesting_Rate = 3
     MAX_CHARGE = 20
     CHARGING_RATE = 10 / 3600  # w/s
@@ -140,12 +155,16 @@ def run_explotation():
     CHARGING_TIME = 0.5 * 3600  # s
     iterationstop = 15
     Charging_station = (-1.6, 7.2)
-    POP_SIZE = 10
+    POP_SIZE = 50
     MAX_ITERATIONS = 50
 
     N = len(cached_robot_statuses)  # number of robots
     M = len(cached_tasks)  # number of tasks
     
+    if not cached: 
+        POP_SIZE = int(POP_SIZE/5)
+    else:
+        POP_SIZE = len(cached_universe)
 
 
     robot_charge_duration = []
@@ -157,18 +176,19 @@ def run_explotation():
         robots_coord.append(point)
 
     robots_coord = np.array(robots_coord)
-
-    pso1_d = time.time()
-    best_fitness , _ = PSO_Algorithm(MAX_ITERATIONS,len(cached_universe),M,N,s,iterationstop,robot_charge_duration,robots_coord,cached_tasks,Charging_station,CHARGING_TIME, Energy_Harvesting_Rate, cached_universe)
-    pso2_d = time.time()
-    pso_d = pso2_d - pso1_d
     
-    CSV_FILE = 'data/coord_timing_distributed.csv'
-    log_coordinator_timing(pso_d, CSV_FILE)
+    if m <= 3:
 
-    rospy.loginfo(f"time pso distributed {pso_d} and best fitness {best_fitness}")
+        start_time = rospy.Time.now()
+        best_fitness , _ = genetic_algorithm(POP_SIZE,M,N,MAX_ITERATIONS,iterationstop,robot_charge_duration,robots_coord,cached_tasks,Charging_station,CHARGING_TIME, Energy_Harvesting_Rate, cached_universe)
 
-    return best_fitness
+    
+    else:
+
+        start_time = rospy.Time.now()
+        best_fitness , _ = PSO_Algorithm(MAX_ITERATIONS,POP_SIZE,M,N,iterationstop,robot_charge_duration,robots_coord,cached_tasks,Charging_station,CHARGING_TIME, Energy_Harvesting_Rate, cached_universe)
+
+    return best_fitness, start_time
 
 
 

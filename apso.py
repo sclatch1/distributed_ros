@@ -1,5 +1,4 @@
-from FitnessEU import fitnessEU
-from FitnessEA import fitness
+from fitness_ea import fitness
 import random
 import numpy as np
 import math
@@ -13,7 +12,7 @@ def initialize_particle(value_range,num_particles, array_size):
     return particles
 
 
-def apso_algorithm(max_iterations, num_particles,M,N,s, iterationstop,robot_charge_duration,robots_coord,task,Charging_station,CHARGING_TIME,Energy_Harvesting_Rate, init_swarm=[]):
+def apso_algorithm(max_iterations, num_particles,M,N, iterationstop,robot_charge_duration,robots_coord,task,Charging_station,CHARGING_TIME,Energy_Harvesting_Rate, init_swarm=[]):
     value_range=N
     array_size=M
     fitnesses = []
@@ -61,10 +60,8 @@ def apso_algorithm(max_iterations, num_particles,M,N,s, iterationstop,robot_char
         for i in range(num_particles):
             # print('i',i)
             # Evaluate fitness for each particle
-            if s == 1:
-                fit, _, _, _ = fitness(particles[i],robot_charge_duration,robots_coord,task,Charging_station,CHARGING_TIME,Energy_Harvesting_Rate)
-            else:
-                fit, _, _, _ = fitnessEU(particles[i],robot_charge_duration,robots_coord, task, Charging_station,CHARGING_TIME)
+            fit, _, _, _ = fitness(particles[i],robot_charge_duration,robots_coord,task,Charging_station,CHARGING_TIME,Energy_Harvesting_Rate)
+
 
             # Update best position and best fitness if applicable
             if fit < best_fitness:

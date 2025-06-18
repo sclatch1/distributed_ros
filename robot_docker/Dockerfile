@@ -33,8 +33,8 @@ RUN chmod +x src/robot_pkg/scripts/robot_node.py
 # Copy custom modules
 COPY mvo.py src/robot_pkg/scripts/mvo.py
 COPY pso.py src/robot_pkg/scripts/pso.py
-COPY apso.py scr/robot_pkg/scripts/apso.py
-COPY ga.py scr/robot_pkg/scripts/ga.py
+COPY apso.py src/robot_pkg/scripts/apso.py
+COPY ga.py src/robot_pkg/scripts/ga.py
 
 COPY fitness_ea.py src/robot_pkg/scripts/fitness_ea.py
 COPY fitness_eu.py src/robot_pkg/scripts/fitness_eu.py

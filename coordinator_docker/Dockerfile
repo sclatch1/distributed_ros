@@ -36,8 +36,8 @@ RUN chmod +x src/coordinator_pkg/scripts/coordinator_node.py
 # Copy custom modules
 COPY mvo.py src/coordinator_pkg/scripts/mvo.py
 COPY pso.py src/coordinator_pkg/scripts/pso.py
-COPY apso.py scr/coordinator_pkg/scripts/apso.py
-COPY ga.py scr/coordinator_pkg/scripts/ga.py
+COPY apso.py src/coordinator_pkg/scripts/apso.py
+COPY ga.py src/coordinator_pkg/scripts/ga.py
 
 COPY fitness_ea.py src/coordinator_pkg/scripts/fitness_ea.py
 COPY fitness_eu.py src/coordinator_pkg/scripts/fitness_eu.py

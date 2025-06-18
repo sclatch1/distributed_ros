@@ -1,4 +1,3 @@
-from fitness_eu import fitnessEU
 from fitness_ea import fitness
 import random
 import copy
@@ -14,7 +13,7 @@ def initialize_swarm(swarm_size: int, M, N) -> list:
     return swarm
 
 
-def PSO_Algorithm(MAX_ITERATIONS, SWARM_SIZE, M, N, s, iterationstop,
+def PSO_Algorithm(MAX_ITERATIONS, SWARM_SIZE, M, N, iterationstop,
                    robot_charge_duration, robots_coord, task,
                    Charging_station, CHARGING_TIME, Energy_Harvesting_Rate,
                    init_swarm=[]):
@@ -28,11 +27,9 @@ def PSO_Algorithm(MAX_ITERATIONS, SWARM_SIZE, M, N, s, iterationstop,
      
     # Initialize best particle
     best_particle = swarm[0]
-    if s == 1:
-        best_fitness, _, _, _ = fitness(best_particle,robot_charge_duration,robots_coord,task,Charging_station,CHARGING_TIME,Energy_Harvesting_Rate)
-    else:
-        best_fitness, _, _, _ = fitnessEU(best_particle,robot_charge_duration,robots_coord, task, Charging_station,CHARGING_TIME)
 
+    best_fitness, _, _, _ = fitness(best_particle,robot_charge_duration,robots_coord,task,Charging_station,CHARGING_TIME,Energy_Harvesting_Rate)
+ 
     # PSO algorithm
     fitnesses = []
     for iteration in range(MAX_ITERATIONS):
@@ -42,10 +39,9 @@ def PSO_Algorithm(MAX_ITERATIONS, SWARM_SIZE, M, N, s, iterationstop,
         # W =  random.uniform(0,.1)
         for particle in swarm:
             # Evaluate fitness
-            if s == 1:
-                particle_fitness, _, _, _ = fitness(particle,robot_charge_duration,robots_coord,task,Charging_station,CHARGING_TIME,Energy_Harvesting_Rate)
-            else:
-                particle_fitness, _, _, _ = fitnessEU(particle,robot_charge_duration,robots_coord, task, Charging_station,CHARGING_TIME)
+
+            particle_fitness, _, _, _ = fitness(particle,robot_charge_duration,robots_coord,task,Charging_station,CHARGING_TIME,Energy_Harvesting_Rate)
+ 
             # print('particle_fitness',particle_fitness)
             # print('best_fitness',particle_fitness)
             # print('particle',particle)
@@ -64,7 +60,6 @@ def PSO_Algorithm(MAX_ITERATIONS, SWARM_SIZE, M, N, s, iterationstop,
 
                 # r1=1
                 # r2=1
-                # print('particle[i]', particle[i])
                 velocity = (particle[i] + W * particle[i] + C1 * r1 * (best_particle[i] - particle[i]) + C2 * r2 * (
                             swarm[iteration % SWARM_SIZE][i] - particle[i]))
                 a = 0

@@ -4,3 +4,6 @@ int32 rows
 int32 cols
 RobotStatusM[] status
 robot_msgs/DropTask[] tasks
+int32 m
+int32 j
+int32 i

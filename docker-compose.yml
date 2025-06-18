@@ -18,8 +18,6 @@ services:
     networks: [ rosnet ]
     environment:
       - PYTHONUNBUFFERED=1
-      - DISTRIBUTED=${DISTRIBUTED}
-      - EXPLORE=${EXPLORE}
     volumes:
       - ~/Desktop/coordinator_data:/root/catkin_ws/data
 
@@ -64,8 +62,8 @@ services:
     environment:
       - ROBOT_NAME=robot2
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=3.5
-      - ROBOT_Y=1.5
+      - ROBOT_X=-3
+      - ROBOT_Y=8
       - BATTERY=45.0
     volumes:
       - ~/Desktop/coordinator_data:/root/catkin_ws/data
@@ -119,6 +117,7 @@ services:
       - BATTERY=20.0
     volumes:
       - ~/Desktop/coordinator_data:/root/catkin_ws/data
+  
   robot6:
     build:
       context: .
@@ -135,6 +134,7 @@ services:
       - BATTERY=40.0
     volumes:
       - ~/Desktop/coordinator_data:/root/catkin_ws/data
+
 
 
 

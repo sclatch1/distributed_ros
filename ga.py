@@ -1,6 +1,5 @@
 
-from FitnessEU import fitnessEU
-from FitnessEA import fitness
+from fitness_ea import fitness
 import numpy as np
 from utilities import write_np_to_file, write_to_file
 import copy
@@ -35,13 +34,13 @@ def mutate(individual,N):
     return individual
 
 
-def genetic_algorithm(POP_SIZE,M,N,iteration,s,iterationstop,robot_charge_duration,robots_coord,task,Charging_station,CHARGING_TIME,Energy_Harvesting_Rate, init_swarm=[]):
+def genetic_algorithm(POP_SIZE,M,N,iteration,iterationstop,robot_charge_duration,robots_coord,task,Charging_station,CHARGING_TIME,Energy_Harvesting_Rate, init_swarm=[]):
 
     if len(init_swarm) == 0:
         population = initialize_population(POP_SIZE, M, N)
     else:
         population = copy.deepcopy(init_swarm)
-    write_np_to_file(population, 'ga_population', 'population_output') 
+    #write_np_to_file(population, 'ga_population', 'population_output') 
     #print(population[0])
     fitnesses=[]
     best_fitness = float('inf')
@@ -65,16 +64,15 @@ def genetic_algorithm(POP_SIZE,M,N,iteration,s,iterationstop,robot_charge_durati
         # Replace old population with new population
         population = np.array(new_population)
 
-        write_np_to_file(population, f'population_iter_{i}', 'population_output')
+        #write_np_to_file(population, f'population_iter_{i}', 'population_output')
 
         # Return the best individual found after all generations
         individual_index = np.zeros(POP_SIZE)
 
         for j in range(POP_SIZE):
-            if s==1:
-                individual_index[j],_,_,_ = fitness(population[j],robot_charge_duration,robots_coord,task,Charging_station,CHARGING_TIME,Energy_Harvesting_Rate)
-            else:
-                individual_index[j],_,_,_ = fitnessEU(population[j],robot_charge_duration,robots_coord, task, Charging_station,CHARGING_TIME)
+
+            individual_index[j],_,_,_ = fitness(population[j],robot_charge_duration,robots_coord,task,Charging_station,CHARGING_TIME,Energy_Harvesting_Rate)
+            
 
               # Ensure calculate_fitness returns a single value
 
@@ -84,9 +82,9 @@ def genetic_algorithm(POP_SIZE,M,N,iteration,s,iterationstop,robot_charge_durati
             fitnesses.append(best_of_iteration)
             best_fitness=best_of_iteration
             best_individual= population[best_individual_index]
-            write_np_to_file(population, f'current_population_{i}', 'population_output')
-            write_np_to_file(best_individual, f'best_individual_{i}', 'population_individual')
-            write_np_to_file(best_individual_index, f'best_individual_index_{i}', 'population_index')
+            #write_np_to_file(population, f'current_population_{i}', 'population_output')
+            #write_np_to_file(best_individual, f'best_individual_{i}', 'population_individual')
+            #write_np_to_file(best_individual_index, f'best_individual_index_{i}', 'population_index')
             #print('F', fitnesses)
         else:
             fitnesses.append(best_fitness)

@@ -1,11 +1,9 @@
 import random
 import numpy as np
 
-from pso import PSO_Algorithm
-from fitness_eu import fitnessEU
+
 from fitness_ea import fitness
 
-from utilities import write_np_to_file
 
 def roulette_wheel_selection(probs):
     """
@@ -32,7 +30,6 @@ def mvo_exploration(
     MAX_ITERATIONS,
     SWARM_SIZE,
     M, N,
-    s,
     robot_charge_duration,
     robots_coord,
     task,
@@ -57,12 +54,10 @@ def mvo_exploration(
         # 1. Evaluate fitness values
         fitness_vals = []
         for u in universes:
-            if s == 1:
-                f, _ , _, _ = fitness(u, robot_charge_duration, robots_coord,
+
+            f, _ , _, _ = fitness(u, robot_charge_duration, robots_coord,
                                task, Charging_station, CHARGING_TIME, Energy_Harvesting_Rate)
-            else:
-                f, _ , _ , _= fitnessEU(u, robot_charge_duration, robots_coord,
-                                 task, Charging_station, CHARGING_TIME)
+
             fitness_vals.append(f)
         fitness_vals = np.array(fitness_vals)
 
@@ -114,6 +109,5 @@ def mvo_exploration(
         #print(f"Iteration {t}: Unique universes = {unique_count}")
         if unique_count < 50:
             break
-
 
     return best_fit, fitness_history, universes
