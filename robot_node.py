@@ -25,8 +25,11 @@ battery_level = float(os.environ.get("BATTERY", "100.0"))
 
 fitness_pub = None
 
+robot_count = 0
+start = None
+Ntest= 3
 
-
+communication_time1 = np.zeros(Ntest)
 
 @dataclass
 class RobotStatusInfo:
@@ -78,13 +81,21 @@ def cach_robot_status(msg):
 def parameters_callback(msg):
     global m
     global cached_tasks, cached_universe, cached_robot_statuses
+    global robot_count
+    global start
     cached_tasks, cached_universe, cached_robot_statuses = None, None, None
-    recv_time = rospy.Time.now()
     send_time = msg.header.stamp
-    communication_robot_status = (recv_time - send_time).to_sec()
-    #rospy.loginfo(f"getting robot status in {communication_robot_status}s")
+    recv_time = rospy.Time.now()
+    if robot_name == "robot1":
+        start = send_time
+
+    
+    if robot_count == 4:
+        communication_robot_status = (recv_time - start).to_sec()
+        communication_time1[msg.j] = communication_robot_status
 
 
+    robot_count += 1
     # cached the tasks in cached_tasks global variable
     cach_task(msg)
     cach_robot_status(msg)
@@ -92,7 +103,7 @@ def parameters_callback(msg):
     m = msg.m
     i = msg.i
     j = msg.j
-    #rospy.loginfo(f"got parameters for {robot_name} will start explotation with m = {m}")
+    rospy.loginfo(f"got parameters for {robot_name} will start explotation with m = {m}")
     best, start_time = run_explotation(cached)
 
     cached = False
@@ -104,13 +115,14 @@ def parameters_callback(msg):
         rospy.logwarn(f"Waiting for subscriber on /{robot_name}/fitness.")
         rospy.sleep(0.05)
 
-    #rospy.loginfo(f"publishing best fitness of {robot_name}")
+    rospy.loginfo(f"publishing best fitness of {robot_name}")
     val.communication = rospy.Time.now()
     val.start_time = start_time
     val.m = m
     val.j = j
     val.i = i
     fitness_pub.publish(val)
+    
     #rospy.loginfo(f"[{robot_name}] /fitness_value publisher connections: {fitness_pub.get_num_connections()}")
  
     #rospy.signal_shutdown("fitness value sent. Shutting down")
@@ -129,17 +141,18 @@ def handle_status_request(req):
 
 
 def robot_node():
-    rospy.init_node('robot_node', anonymous=True)
-
+    rospy.init_node(f'{robot_name}')
+    global robot_count
+    robot_count = 0
     # Service server: /get_robot_status_<robot_name>
     service_name = f"/get_robot_status_{robot_name}"
     rospy.Service(service_name, RobotStatus, handle_status_request)
-    #rospy.loginfo(f"[{robot_name}] Ready to respond on service {service_name}")
+    rospy.loginfo(f"[{robot_name}] Ready to respond on service {service_name}")
 
 
 
     rospy.Subscriber(f'/{robot_name}/parameters', Parameters , parameters_callback)
-    #rospy.loginfo(f"[{robot_name}] subscribe to /{robot_name}/parameters")
+    rospy.loginfo(f"[{robot_name}] subscribe to /{robot_name}/parameters")
     global fitness_pub
     fitness_pub = rospy.Publisher('/fitness_value', FitnessValue, queue_size=10)
 

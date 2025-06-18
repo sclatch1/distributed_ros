@@ -29,12 +29,12 @@ BYTES_PER_INT = 4
 BITS_PER_BYTE = 8
 
 COORDS = (0,0)
-
+timings = {}
 best_fitness = 10000000
 first_robot_start = None
 
 fitness_count = 0
-Ntest = 1
+Ntest = 3
 
 MM = np.zeros(Ntest)
 
@@ -86,6 +86,9 @@ bestDMVOPSOmin = np.zeros(Ntest)
 bestDPSOmin    = np.zeros(Ntest)
 
 
+communication_time = np.zeros(Ntest)
+communication_time1 = np.zeros(Ntest)
+
 @dataclass
 class RobotStatusInfo:
     position: Tuple[float, float]
@@ -95,11 +98,24 @@ class RobotStatusInfo:
 
 def call_robot_status_service(robot_name):
     service_name = f"/get_robot_status_{robot_name}"
+    rospy.loginfo("calling robot status")
     rospy.wait_for_service(service_name)
+    global timings
+    global current_jj
     try:
+        
+        start = rospy.Time.now()
+        timings[robot_name] = start
         get_status = rospy.ServiceProxy(service_name, RobotStatus)
-        resp = get_status()  # No arguments in your RobotStatus.srv request
-        #rospy.loginfo(f"Got status from {robot_name}: Position({resp.position.x}, {resp.position.y}), Battery: {resp.battery}%")
+        if robot_name == 'robot5':
+            end = rospy.Time.now()
+
+            communication_time[current_jj] = (end - timings['robot1']).to_sec()
+
+            timings.clear()
+        rospy.loginfo(f"this is the com time: {communication_time}")
+        resp = get_status() 
+        rospy.loginfo(f"Got status from {robot_name}: Position({resp.position.x}, {resp.position.y}), Battery: {resp.battery}%")
         return resp
     except rospy.ServiceException as e:
         rospy.logerr(f"Service call failed for {robot_name}: {e}")
@@ -107,11 +123,13 @@ def call_robot_status_service(robot_name):
 
 
 def get_robot_info(N):
+    rospy.loginfo("get robot info")
     robot_names = ['robot1', 'robot2', 'robot3', 'robot4', 'robot5', 'robot6', 'robot7', 
                    'robot8', 'robot9', 'robot10', 'robot11', 'robot12', 'robot13', 'robot14'
                    , 'robot15', 'robot16', 'robot17', 'robot18', 'robot19', 'robot20']  # Example robot names
 
-    robot_names = robot_names[0:N]
+    robot_names = ['robot1', 'robot2', 'robot3', 'robot4', 'robot5']
+    #robot_names = robot_names[0:5]
 
     robots_info: List[RobotStatusInfo] = []
 
@@ -139,9 +157,6 @@ def task_callback(msg):
     cached_tasks = tasks
 
 def fitness_value_callback(msg):
-
-
-
     global fitness_count
     global best_fitness
     global solve_time
@@ -166,13 +181,11 @@ def fitness_value_callback(msg):
     
     if fitness_count >= 5:
         fitness_count = 0
-        send_time = msg.communication
-        communication_time = (recv_time - send_time).to_sec()
 
-        #rospy.loginfo(f"getting robot status in {communication_time}s")
+
 
         m = msg.m
-        #print(f"this is the current fitness {current_fitness} and jj {current_jj} and {msg.m}" )
+        print(f"this is the current fitness {current_fitness} and jj {current_jj} and {msg.m} and solve_time = {solve_time}" )
         if m == 2:
 
             if current_ii!=0:
@@ -244,8 +257,8 @@ def coordinator_node():
 
     rospy.Subscriber('/fitness_value', FitnessValue, fitness_value_callback)
     
-    M = 100
-    N = 5
+    M = 10
+    N=5
     for jj in range(Ntest):
         MM[jj] = M
         current_jj = jj
@@ -271,7 +284,7 @@ def coordinator_node():
             solve_time    = 0.0
             for ii in range(1):
                 current_ii = ii
-                #rospy.loginfo(f"we are at test {jj}, m is {m}")
+                rospy.loginfo(f"we are at test {jj}, m is {m}")
 
                 # mvo + ga centralised
                 if m == 0:
@@ -417,7 +430,12 @@ def coordinator_node():
                 #CSV_FILE = 'data/coord_timing_central.csv'
                 #log_coordinator_timing(pso_time=pso_c, CSV_FILE=CSV_FILE)
 
-        N = N + 1
+        M = M + 5
+
+
+
+
+
 
 
     
@@ -493,6 +511,8 @@ def coordinator_node():
     plt.legend()
     plt.grid(True)
     plt.savefig(os.path.join(directory, 'bestPSO'))
+
+
     
     rospy.spin()
 
@@ -553,7 +573,7 @@ def send_parameters(robots_info, tasks, universes, array_allocation, num_cols):
 
         # Wait for at least one subscriber
         while pub.get_num_connections() < 1:
-            rospy.logwarn(f"Waiting for subscriber on {robot.name}/parameters...")
+            rospy.logwarn(f"Waiting for subscriber on /{robot.name}/parameters...")
             rospy.sleep(2)
 
 
