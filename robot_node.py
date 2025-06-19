@@ -26,7 +26,7 @@ class RobotNode:
         self.x        = float(os.environ.get("ROBOT_X", "0.0"))
         self.y        = float(os.environ.get("ROBOT_Y", "0.0"))
         self.battery  = float(os.environ.get("BATTERY", "100.0"))
-        self.Ntest    = 2
+        self.Ntest    = 4
         self.communication_time1 = np.zeros(self.Ntest)
         self.m        = 0 
         # plus any cached_* lists (initialize to None or empty)
@@ -90,7 +90,7 @@ class RobotNode:
         self.j = msg.j
         #rospy.loginfo(f"got parameters for {self.name} will start explotation with m = {self.m}")
         best, start_time = self.run_explotation()
-
+        rospy.loginfo(f"for m {self.m}, j {self.j} and fitness {best}")
 
         val = FitnessValue(fitness=best)
 
@@ -156,17 +156,19 @@ class RobotNode:
         
         if self.m <= 3:
             if len(self.cached_universe) > 0:
-                write_np_to_file(self.cached_universe, f"GA_{self.m}", "data/universes")
+                write_np_to_file(self.cached_universe, f"GA_{self.m}", f"data/universes/{self.name}")
             start_time = rospy.Time.now()
             best_fitness , _ = genetic_algorithm(POP_SIZE,M,N,MAX_ITERATIONS,iterationstop,robot_charge_duration,robots_coord,self.cached_tasks,Charging_station,CHARGING_TIME, Energy_Harvesting_Rate, self.cached_universe)
 
         
         else:
             if len(self.cached_universe) > 0:
-                write_np_to_file(self.cached_universe, f"PSO_{self.m}", "data/universes")
+                write_np_to_file(self.cached_universe, f"PSO_{self.m}", f"data/universes/{self.name}")
             start_time = rospy.Time.now()
-            best_fitness , _ = PSO_Algorithm(MAX_ITERATIONS,POP_SIZE,M,N,iterationstop,robot_charge_duration,robots_coord,self.cached_tasks,Charging_station,CHARGING_TIME, Energy_Harvesting_Rate, self.cached_universe)
+            best_fitness , swarm = PSO_Algorithm(MAX_ITERATIONS,POP_SIZE,M,N,iterationstop,robot_charge_duration,robots_coord,self.cached_tasks,Charging_station,CHARGING_TIME, Energy_Harvesting_Rate, self.cached_universe)
+            write_np_to_file(np.array(swarm), f"PSO_{self.m}", f"data/swarm/{self.name}")
 
+        
         return best_fitness, start_time
 
     # 10) Finally a run() to spin:

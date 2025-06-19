@@ -97,7 +97,7 @@ def genetic_algorithm(POP_SIZE,M,N,iteration,iterationstop,robot_charge_duration
             if all(x == last_ten[0] for x in last_ten):
                 break
 
-
+   # print(f"number of iteration in ga {i}")
 
 
     return best_fitness, fitnesses

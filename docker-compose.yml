@@ -103,7 +103,7 @@ services:
       - PYTHONUNBUFFERED=1
       - ROS_MASTER_URI=http://ros-master:11311
       - ROBOT_X=3.5
-      - ROBOT_Y=1.5
+      - ROBOT_Y=-5.6
       - BATTERY=90.0
     volumes:
       - ~/Desktop/coordinator_data:/root/catkin_ws/data
@@ -126,25 +126,90 @@ services:
     volumes:
       - ~/Desktop/coordinator_data:/root/catkin_ws/data
   
-  #robot6:
-  #  build:
-  #    context: .
-  #    dockerfile: robot_docker/Dockerfile
-  #  container_name: robot6
-  #  depends_on:
-  #    - ros-master
-  #  networks: [ rosnet ]
-  #  environment:
-  #    - ROBOT_NAME=robot6
-  #    - PYTHONUNBUFFERED=1
-  #    - DISTRIBUTED=${DISTRIBUTED}
-  #    - EXPLORE=${EXPLORE}
-  #    - ROBOT_X=-4.5
-  #    - ROBOT_Y=-7
-  #    - BATTERY=40.0
-  #  volumes:
-  #    - ~/Desktop/coordinator_data:/root/catkin_ws/data
+  robot6:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot6
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot6
+      - PYTHONUNBUFFERED=1
+      - ROBOT_X=-4.5
+      - ROBOT_Y=-7
+      - BATTERY=40.0
+    volumes:
+      - ~/Desktop/coordinator_data:/root/catkin_ws/data
 
+  robot7:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot7
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot7
+      - PYTHONUNBUFFERED=1
+      - ROBOT_X=5.5
+      - ROBOT_Y=-5.6
+      - BATTERY=40.0
+    volumes:
+      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+
+  robot8:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot8
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot8
+      - PYTHONUNBUFFERED=1
+      - ROBOT_X=3.5
+      - ROBOT_Y=-10
+      - BATTERY=40.0
+    volumes:
+      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+
+  robot9:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot9
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot9
+      - PYTHONUNBUFFERED=1
+      - ROBOT_X=-4.5
+      - ROBOT_Y=1
+      - BATTERY=40.0
+    volumes:
+      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+
+  robot10:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot10
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot10
+      - PYTHONUNBUFFERED=1
+      - ROBOT_X=-3
+      - ROBOT_Y=9
+      - BATTERY=40.0
+    volumes:
+      - ~/Desktop/coordinator_data:/root/catkin_ws/data
 
 
 networks:

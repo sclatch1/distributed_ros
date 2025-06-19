@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import pandas as pd
-
+import random
 
 from mvo import mvo_exploration 
 from pso import PSO_Algorithm
@@ -42,7 +42,7 @@ class CoordinatorNode:
     def __init__(self):
         self.coordinator_coords = (0,0)
         self.timings = {}
-        self.Ntest = 2
+        self.Ntest = 15
         self.MM = np.zeros(self.Ntest)
 
         # parameters for functions
@@ -55,8 +55,10 @@ class CoordinatorNode:
 
         # fitness callback variables
         self.fitnesses = {}
-        self.start_time = float('inf')
-        self.best_fitness = float('inf')
+        self.start_time = None
+        self.best_fitness = None
+        self.solve_time = None
+        
 
         # ROS init
         rospy.init_node('coordinator_node')
@@ -73,7 +75,7 @@ class CoordinatorNode:
 
         # run() variables
         self.M = 10
-        self.N=5
+        self.N = 6
         self.MM = np.zeros(self.Ntest)
 
 
@@ -136,8 +138,9 @@ class CoordinatorNode:
     def reset_iteration_data(self):
     # Resetting per-iteration variables
         self.fitnesses.clear()
-        self.start_time = float('inf')
-        self.best_fitness = float('inf')
+        self.start_time = None
+        self.best_fitness = None
+        #rospy.loginfo(f"resetting {self.fitnesses} {self.start_time} {self.best_fitness}")
 
 
     def call_robot_status_service(self, robot_name):
@@ -164,13 +167,13 @@ class CoordinatorNode:
             return None
 
 
-    def get_robot_info(self, N):
+    def get_robot_info(self):
         robot_names = ['robot1', 'robot2', 'robot3', 'robot4', 'robot5', 'robot6', 'robot7', 
                     'robot8', 'robot9', 'robot10', 'robot11', 'robot12', 'robot13', 'robot14'
                     , 'robot15', 'robot16', 'robot17', 'robot18', 'robot19', 'robot20']  # Example robot names
 
-        robot_names = ['robot1', 'robot2', 'robot3', 'robot4', 'robot5']
-        #robot_names = robot_names[0:5]
+        
+        robot_names = robot_names[0:self.N]
 
         robots_info: List[RobotStatusInfo] = []
 
@@ -179,7 +182,8 @@ class CoordinatorNode:
             if status:
                 pos = status.position
                 robots_info.append(RobotStatusInfo(position=(pos.x, pos.y), battery=status.battery, name=name))
-        
+        random.shuffle(robots_info)
+
         return robots_info
 
 
@@ -201,74 +205,75 @@ class CoordinatorNode:
         m = msg.m
         current_jj = msg.j
         current_ii = msg.i
-        solve_time = -1
-        #rospy.loginfo(f"this is jj {current_jj} and m is {m} " )
+        rospy.loginfo(f"this is jj {current_jj} and m is {m} solve {(recv_time - msg.start_time).to_sec()} " )
 
-        self.fitnesses[recv_time.to_sec()] = msg.fitness
 
-        if msg.start_time.to_sec() < self.start_time:
-            self.start_time = msg.start_time.to_sec()
-         
+        self.fitnesses[recv_time] = msg.fitness
 
-        if len(self.fitnesses) >= 5:
-            
-            for key, value in self.fitnesses.items():
-                if value < self.best_fitness:
-                    self.best_fitness = value
-                    solve_time = key - self.start_time 
+        if self.start_time is None or msg.start_time < self.start_time:
+            self.start_time = msg.start_time
+
+        if self.best_fitness is None or msg.fitness < self.best_fitness:
+            self.best_fitness = msg.fitness
+            self.solve_time = (recv_time - self.start_time).to_sec()
+
+
+        if len(self.fitnesses) == self.N:            
+            #rospy.loginfo(f"this is jj {current_jj} and m is {m} and fitness is {self.best_fitness} solve {self.solve_time} " )
+
             if m == 2:
 
                 if current_ii!=0:
                     self.bestDMVOGA[current_jj]=max(self.bestDMVOGAmax[current_jj] , self.best_fitness)
                     self.bestDMVOGAmin[current_jj]=min(self.bestDMVOGAmin[current_jj] , self.best_fitness)
-                    self.tDMVOGA[current_jj]=(solve_time+self.tDMVOGA[current_jj]* current_ii) / (current_ii + 1)
+                    self.tDMVOGA[current_jj]=(self.solve_time+self.tDMVOGA[current_jj]* current_ii) / (current_ii + 1)
                     self.bestDMVOGA[current_jj]=(self.best_fitness+self.bestDMVOGA[current_jj]* current_ii) / (current_ii + 1)
 
                 else:
-                    self.tDMVOGA[current_jj]=solve_time
+                    self.tDMVOGA[current_jj]=self.solve_time
                     self.bestDMVOGA[current_jj]=self.best_fitness
                     self.bestDMVOGAmax[current_jj]=self.best_fitness
                     self.bestDMVOGAmin[current_jj]=self.best_fitness
 
-            if m == 3:
+            elif m == 3:
                 if current_ii!=0:
                     self.bestDGA[current_jj]=max(self.bestDGAmax[current_jj] , self.best_fitness)
                     self.bestDGAmin[current_jj]=min(self.bestDGAmin[current_jj] , self.best_fitness)
-                    self.tDGA[current_jj]=(solve_time+self.tDGA[current_jj]* current_ii) / (current_ii + 1)
+                    self.tDGA[current_jj]=(self.solve_time+self.tDGA[current_jj]* current_ii) / (current_ii + 1)
                     self.bestDGA[current_jj]=(self.best_fitness+self.bestDGA[current_jj]* current_ii) / (current_ii + 1)
 
                 else:
-                    self.tDGA[current_jj]=solve_time
+                    self.tDGA[current_jj]=self.solve_time
                     self.bestDGA[current_jj]=self.best_fitness
                     self.bestDGAmax[current_jj]=self.best_fitness
                     self.bestDGAmin[current_jj]=self.best_fitness
             
-            if m == 6:
+            elif m == 6:
                 if current_ii!=0:
                     self.bestDMVOPSO[current_jj]=max(self.bestDMVOPSOmax[current_jj] , self.best_fitness)
                     self.bestDMVOPSOmin[current_jj]=min(self.bestDMVOPSOmin[current_jj] , self.best_fitness)
-                    self.tDMVOPSO[current_jj]=(solve_time+self.tDMVOPSO[current_jj]* current_ii) / (current_ii + 1)
+                    self.tDMVOPSO[current_jj]=(self.solve_time+self.tDMVOPSO[current_jj]* current_ii) / (current_ii + 1)
                     self.bestDMVOPSO[current_jj]=(self.best_fitness+self.bestDMVOPSO[current_jj]* current_ii) / (current_ii + 1)
 
                 else:
-                    self.tDMVOPSO[current_jj]=solve_time
+                    self.tDMVOPSO[current_jj]=self.solve_time
                     self.bestDMVOPSO[current_jj]=self.best_fitness
                     self.bestDMVOPSOmax[current_jj]=self.best_fitness
                     self.bestDMVOPSOmin[current_jj]=self.best_fitness
 
-            if m == 7:
+            elif m == 7:
                 if current_ii!=0:
                     self.bestDPSO[current_jj]=max(self.bestDPSOmax[current_jj] , self.best_fitness)
                     self.bestDPSOmin[current_jj]=min(self.bestDPSOmin[current_jj] , self.best_fitness)
-                    self.tDPSO[current_jj]=(solve_time+self.tDPSO[current_jj]* current_ii) / (current_ii + 1)
+                    self.tDPSO[current_jj]=(self.solve_time+self.tDPSO[current_jj]* current_ii) / (current_ii + 1)
                     self.bestDPSO[current_jj]=(self.best_fitness+self.bestDPSO[current_jj]* current_ii) / (current_ii + 1)
 
                 else:
-                    self.tDPSO[current_jj]=solve_time
+                    self.tDPSO[current_jj]=self.solve_time
                     self.bestDPSO[current_jj]=self.best_fitness
                     self.bestDPSOmax[current_jj]=self.best_fitness
                     self.bestDPSOmin[current_jj]=self.best_fitness
-
+                rospy.sleep(2)
                 """
                 rospy.loginfo(f"BESTtDMVOPSO {self.tDMVOPSO}")
                 rospy.loginfo(f"BESTtDMVOGA {self.tDMVOGA}")
@@ -279,6 +284,8 @@ class CoordinatorNode:
                 rospy.loginfo(f"BESTtCPSO {self.tCPSO}")
                 rospy.loginfo(f"BESTtCGA {self.tCGA}")
                 """
+            self.reset_iteration_data()
+            
 
 
             #rospy.signal_shutdown("All fitness values received.")
@@ -295,7 +302,7 @@ class CoordinatorNode:
             rospy.sleep(1)
             
             # getting the robots location and battery level
-            robots_info = self.get_robot_info(self.N)
+            robots_info = self.get_robot_info()
 
             self.timings.clear()
             
@@ -309,9 +316,12 @@ class CoordinatorNode:
             rospy.loginfo(f"the time of tmvo = {tmvo}")
             for m in range(8):
                 self.current_m = m
-                for ii in range(1):
+                #rospy.loginfo("go to sleep...")
+                rospy.sleep(2)
+                for ii in range(10):
+
                     self.current_ii = ii
-                    rospy.loginfo(f"we are at test {jj}, m is {m}")
+                    #rospy.loginfo(f"we are at test {jj}, m is {m}")
 
                     # mvo + ga centralised
                     if m == 0:
@@ -402,7 +412,6 @@ class CoordinatorNode:
 
                     # mvo + pso distributed  
                     if m == 6:
-
                         array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, SWARM_SIZE, len(self.cached_tasks))
 
                         self.send_parameters(robots_info, self.cached_tasks, universes, array_allocation, num_cols=self.M)
@@ -412,12 +421,9 @@ class CoordinatorNode:
 
                         self.send_parameters(robots_info, self.cached_tasks, universes, array_allocation, num_cols=self.M)
 
-
-                    self.reset_iteration_data()
-                    rospy.sleep(5)
+                        
                     #CSV_FILE = 'data/coord_timing_central.csv'
                     #log_coordinator_timing(pso_time=pso_c, CSV_FILE=CSV_FILE)
-
             self.M += 5
         self.plot()
         rospy.spin()
@@ -530,7 +536,7 @@ class CoordinatorNode:
                 Charging_station, CHARGING_TIME, Energy_Harvesting_Rate):
         
         start_exp = time.time()
-        best_MVOEA, init_swarm = mvo_exploration(
+        init_swarm = mvo_exploration(
                 MAX_ITERATIONS=MAX_ITERATIONS,
                 SWARM_SIZE=swarm_size,
                 M=self.M, N=self.N, 
@@ -550,7 +556,7 @@ class CoordinatorNode:
     def exploitation(self,MAX_ITERATIONS, swarm_size, robot_charge_duration, robots_coord, task, 
                 Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, method, init_swarm=[]):
         
-        tpso1 = time.time()
+        tpso1 = rospy.Time.now()
         if method == "pso":
             best, _ = PSO_Algorithm(
                     MAX_ITERATIONS=MAX_ITERATIONS,
@@ -565,10 +571,10 @@ class CoordinatorNode:
                     Energy_Harvesting_Rate=Energy_Harvesting_Rate,
                     init_swarm=init_swarm
                 )
-        tpso2 = time.time()
+        tpso2 = rospy.Time.now()
         tpso = tpso2 - tpso1    
         
-        ga1 = time.time()
+        ga1 = rospy.Time.now()
         if method == "ga":
             best, _ = genetic_algorithm(
                     POP_SIZE=swarm_size,
@@ -582,9 +588,11 @@ class CoordinatorNode:
                     Energy_Harvesting_Rate=Energy_Harvesting_Rate,
                     init_swarm=init_swarm
             )
-        ga2 = time.time()
+        ga2 = rospy.Time.now()
         ga = ga2 - ga1
-        return best , tpso, ga
+
+        #rospy.loginfo(f"m {self.current_m} {self.current_jj} this is pso solve time {tpso.to_sec()}")
+        return best , tpso.to_sec(), ga.to_sec()
         
 
     def plot(self):
