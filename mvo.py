@@ -38,7 +38,7 @@ def mvo_exploration(
     Energy_Harvesting_Rate,
     WEP_min=0.2,
     WEP_max=1.0,
-    p=6
+    p=4
 ):
     """
     Original Multi-Verse Optimizer (Mirjalili, 2016) with improved diversity handling.
@@ -48,7 +48,6 @@ def mvo_exploration(
     """
     universes = initialize_population(N,SWARM_SIZE,M)
     lb, ub = 0, N - 1
-    fitness_history = []
 
     for t in range(1, MAX_ITERATIONS + 1):
         # 1. Evaluate fitness values
@@ -65,7 +64,6 @@ def mvo_exploration(
         best_idx = np.argmin(fitness_vals)
         best_u = universes[best_idx]
         best_fit = fitness_vals[best_idx]
-        fitness_history.append(best_fit)
 
         # 2. Dynamic parameters
         WEP = WEP_min + (t / MAX_ITERATIONS) * (WEP_max - WEP_min)
@@ -109,5 +107,6 @@ def mvo_exploration(
         #print(f"Iteration {t}: Unique universes = {unique_count}")
         if unique_count < 50:
             break
+    print(f"number of iterations mvo {t} with {p}")
 
-    return best_fit, fitness_history, universes
+    return best_fit, universes
