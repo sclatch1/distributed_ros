@@ -5,6 +5,13 @@ from utilities import write_np_to_file, write_to_file
 import copy
 
 
+# choose a fixed seed
+SEED = 42
+
+
+np.random.seed(SEED)
+
+
 def initialize_population(pop_size, array_size, value_range):
     return np.random.randint(0, value_range, size=(pop_size, array_size))
 

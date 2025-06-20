@@ -2,6 +2,13 @@ import random
 import numpy as np
 
 
+# choose a fixed seed
+SEED = 42
+
+# seed both generators
+random.seed(SEED)
+np.random.seed(SEED)
+
 from fitness_ea import fitness
 
 
@@ -48,7 +55,7 @@ def mvo_exploration(
     best_u_global = None
     stagnation_counter = 0
 
-    for t in range(1, MAX_ITERATIONS + 1):
+    for t in range(1, 25 + 1):
         # 1. Evaluate fitness values
         fitness_vals = []
         for u in universes:

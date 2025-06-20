@@ -5,8 +5,11 @@ from geometry_msgs.msg import Point
 from robot_msgs.srv import RobotStatus, RobotStatusResponse
 
 
+
+
 import os
 import numpy as np
+import pandas as pd
 
 from pso import PSO_Algorithm
 from ga import genetic_algorithm
@@ -15,7 +18,8 @@ import time
 from dataclasses import dataclass
 from typing import Tuple
 
-from utilities import log_coordinator_timing, write_np_to_file
+from utilities import write_np_to_file, write_to_file, write_df_as_text
+
 
 
 
@@ -26,8 +30,9 @@ class RobotNode:
         self.x        = float(os.environ.get("ROBOT_X", "0.0"))
         self.y        = float(os.environ.get("ROBOT_Y", "0.0"))
         self.battery  = float(os.environ.get("BATTERY", "100.0"))
-        self.Ntest    = 4
-        self.communication_time1 = np.zeros(self.Ntest)
+        self.Ntest    = 10
+        self.communication_time = np.zeros(self.Ntest)
+        self.communication_time_all = [[] for _ in range(self.Ntest)] 
         self.m        = 0 
         # plus any cached_* lists (initialize to None or empty)
         self.cached_tasks = []
@@ -47,7 +52,7 @@ class RobotNode:
         # 5) Subscribe to parameters
         topic = f"/{self.name}/parameters"
         rospy.Subscriber(topic, Parameters, self.parameters_callback)
-        rospy.loginfo(f"[{self.name}] Subscribed to {topic}")
+        #rospy.loginfo(f"[{self.name}] Subscribed to {topic}")
 
     # 6) Move your free functions in as methods:
     def cach_task(self, msg):
@@ -77,9 +82,7 @@ class RobotNode:
         recv_time = rospy.Time.now()
 
 
-        self.communication_time1[msg.j] = (recv_time - send_time).to_sec()
-
-
+        communicate = (recv_time - send_time).to_sec()
 
         # cached the tasks in cached_tasks global variable
         self.cach_task(msg)
@@ -88,9 +91,16 @@ class RobotNode:
         self.m = msg.m
         self.i = msg.i
         self.j = msg.j
+        self.communication_time[self.j]=(communicate+self.communication_time[self.j]* self.i) / (self.i + 1)
+        self.communication_time_all[self.j].append(communicate)
+        if self.i == 4:
+            std = np.std(self.communication_time_all[self.j])
+            df = pd.DataFrame({'Std_Comm_Time': [std]})
+            write_df_as_text(df,f"std_{self.name}_{self.j}" , "std_communication" )
+            write_to_file(self.communication_time, "communication_time/" ,f"comm_time_{self.name}_{self.j}_{self.m}")
         #rospy.loginfo(f"got parameters for {self.name} will start explotation with m = {self.m}")
         best, start_time = self.run_explotation()
-        rospy.loginfo(f"for m {self.m}, j {self.j} and fitness {best}")
+        #rospy.loginfo(f"for m {self.m}, j {self.j} and fitness {best}")
 
         val = FitnessValue(fitness=best)
 
@@ -155,18 +165,22 @@ class RobotNode:
         robots_coord = np.array(robots_coord)
         
         if self.m <= 3:
+            """
             if len(self.cached_universe) > 0:
                 write_np_to_file(self.cached_universe, f"GA_{self.m}", f"data/universes/{self.name}")
+            """
             start_time = rospy.Time.now()
             best_fitness , _ = genetic_algorithm(POP_SIZE,M,N,MAX_ITERATIONS,iterationstop,robot_charge_duration,robots_coord,self.cached_tasks,Charging_station,CHARGING_TIME, Energy_Harvesting_Rate, self.cached_universe)
 
         
         else:
+            """
             if len(self.cached_universe) > 0:
                 write_np_to_file(self.cached_universe, f"PSO_{self.m}", f"data/universes/{self.name}")
+            """
             start_time = rospy.Time.now()
             best_fitness , swarm = PSO_Algorithm(MAX_ITERATIONS,POP_SIZE,M,N,iterationstop,robot_charge_duration,robots_coord,self.cached_tasks,Charging_station,CHARGING_TIME, Energy_Harvesting_Rate, self.cached_universe)
-            write_np_to_file(np.array(swarm), f"PSO_{self.m}", f"data/swarm/{self.name}")
+            #write_np_to_file(np.array(swarm), f"PSO_{self.m}", f"data/swarm/{self.name}")
 
         
         return best_fitness, start_time

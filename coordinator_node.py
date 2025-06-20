@@ -5,6 +5,14 @@ import numpy as np
 import time
 import pandas as pd
 import random
+import math
+
+
+# choose a fixed seed
+SEED = 42
+
+# seed both generators
+random.seed(SEED)
 
 from mvo import mvo_exploration 
 from pso import PSO_Algorithm
@@ -20,7 +28,7 @@ from robot_msgs.srv import RobotStatus
 from dataclasses import dataclass
 from typing import List, Tuple
 
-from utilities import log_coordinator_timing, write_to_file, write_np_to_file
+from utilities import log_coordinator_timing, write_to_file, write_np_to_file, write_df_as_text
 
 E_ELEC = 50e-9     # energy per bit for electronics (J)
 E_AMP = 100e-12    # energy per bit per m^2 (J)
@@ -42,7 +50,7 @@ class CoordinatorNode:
     def __init__(self):
         self.coordinator_coords = (0,0)
         self.timings = {}
-        self.Ntest = 15
+        self.Ntest = 10
         self.MM = np.zeros(self.Ntest)
 
         # parameters for functions
@@ -131,9 +139,25 @@ class CoordinatorNode:
         self.bestDMVOPSOmin = np.zeros(self.Ntest)
         self.bestDPSOmin    = np.zeros(self.Ntest)
 
+        # standard deviation and error
+        self.all_tDPSO =  [[] for _ in range(self.Ntest)]
+        self.all_tDMVOPSO =  [[] for _ in range(self.Ntest)] 
+        self.all_tDMVOGA =  [[] for _ in range(self.Ntest)] 
+        self.all_tDGA =  [[] for _ in range(self.Ntest)]
+        self.all_tCPSO =  [[] for _ in range(self.Ntest)]
+        self.all_tCMVOPSO =  [[] for _ in range(self.Ntest)] 
+        self.all_tCMVOGA =  [[] for _ in range(self.Ntest)] 
+        self.all_tCGA =  [[] for _ in range(self.Ntest)]  
+        
+
+
+        self.communication_time_all = [[] for _ in range(self.Ntest)] 
+        self.tmvo_all = [[] for _ in range(self.Ntest)] 
+
 
         self.communication_time = np.zeros(self.Ntest)
-        self.communication_time1 = np.zeros(self.Ntest)
+        self.tMVO = np.zeros(self.Ntest)
+        #self.communication_time1 = np.zeros(self.Ntest)
 
     def reset_iteration_data(self):
     # Resetting per-iteration variables
@@ -155,7 +179,14 @@ class CoordinatorNode:
             self.timings[robot_name] = (end - start).to_sec()
 
             if len(self.timings) == self.N:
-                self.communication_time[self.current_jj] = max(self.timings.values())
+                communicate = max(self.timings.values())
+                self.communication_time_all[self.current_jj].append(communicate)
+                self.communication_time[self.current_jj]=(communicate+self.communication_time[self.current_jj]* self.current_ii) / (self.current_ii + 1)
+          
+                std = np.std(self.communication_time_all[self.current_jj])
+                mean = self.communication_time[self.current_jj]
+                df = pd.DataFrame({'Std_Comm_Time': [std], 'mean_comm_time': [mean]})
+                write_df_as_text(df, f"coordinator_{self.current_jj}", f"std_communication_c/")
                 self.timings.clear()
             
             #rospy.loginfo(f"this is the com time: {self.communication_time}")
@@ -205,7 +236,7 @@ class CoordinatorNode:
         m = msg.m
         current_jj = msg.j
         current_ii = msg.i
-        rospy.loginfo(f"this is jj {current_jj} and m is {m} solve {(recv_time - msg.start_time).to_sec()} " )
+        #rospy.loginfo(f"this is ii {current_ii} and m is {m} " )
 
 
         self.fitnesses[recv_time] = msg.fitness
@@ -222,7 +253,7 @@ class CoordinatorNode:
             #rospy.loginfo(f"this is jj {current_jj} and m is {m} and fitness is {self.best_fitness} solve {self.solve_time} " )
 
             if m == 2:
-
+                self.all_tDMVOGA[current_jj].append(self.solve_time)
                 if current_ii!=0:
                     self.bestDMVOGA[current_jj]=max(self.bestDMVOGAmax[current_jj] , self.best_fitness)
                     self.bestDMVOGAmin[current_jj]=min(self.bestDMVOGAmin[current_jj] , self.best_fitness)
@@ -236,6 +267,7 @@ class CoordinatorNode:
                     self.bestDMVOGAmin[current_jj]=self.best_fitness
 
             elif m == 3:
+                self.all_tDGA[current_jj].append(self.solve_time)
                 if current_ii!=0:
                     self.bestDGA[current_jj]=max(self.bestDGAmax[current_jj] , self.best_fitness)
                     self.bestDGAmin[current_jj]=min(self.bestDGAmin[current_jj] , self.best_fitness)
@@ -249,6 +281,7 @@ class CoordinatorNode:
                     self.bestDGAmin[current_jj]=self.best_fitness
             
             elif m == 6:
+                self.all_tDMVOPSO[current_jj].append(self.solve_time)
                 if current_ii!=0:
                     self.bestDMVOPSO[current_jj]=max(self.bestDMVOPSOmax[current_jj] , self.best_fitness)
                     self.bestDMVOPSOmin[current_jj]=min(self.bestDMVOPSOmin[current_jj] , self.best_fitness)
@@ -262,6 +295,7 @@ class CoordinatorNode:
                     self.bestDMVOPSOmin[current_jj]=self.best_fitness
 
             elif m == 7:
+                self.all_tDPSO[current_jj].append(self.solve_time)
                 if current_ii!=0:
                     self.bestDPSO[current_jj]=max(self.bestDPSOmax[current_jj] , self.best_fitness)
                     self.bestDPSOmin[current_jj]=min(self.bestDPSOmin[current_jj] , self.best_fitness)
@@ -295,7 +329,7 @@ class CoordinatorNode:
         for jj in range(self.Ntest):
             self.MM[jj] = self.M
             self.current_jj = jj
-            
+            rospy.loginfo(f"current jj : {self.current_jj}")
             # getting the tasks
             self.m_pub.publish(Int32(data=self.M))
 
@@ -310,17 +344,36 @@ class CoordinatorNode:
                     robot_charge_duration, robots_coord, \
                     Charging_station, CHARGING_TIME, Energy_Harvesting_Rate,\
                     = self.init_enivornment(robots_info)
-            universes, tmvo = self.explore(MAX_ITERATIONS, SWARM_SIZE, 
-                                    robot_charge_duration, robots_coord, self.cached_tasks, 
-                                    Charging_station, CHARGING_TIME, Energy_Harvesting_Rate)
-            rospy.loginfo(f"the time of tmvo = {tmvo}")
-            for m in range(8):
-                self.current_m = m
-                #rospy.loginfo("go to sleep...")
-                rospy.sleep(2)
-                for ii in range(10):
 
-                    self.current_ii = ii
+
+
+            for ii in range(5):
+                self.current_ii = ii
+                #rospy.loginfo("go to sleep...")
+                universes, tmvo = self.explore(MAX_ITERATIONS, SWARM_SIZE, 
+                        robot_charge_duration, robots_coord, self.cached_tasks, 
+                        Charging_station, CHARGING_TIME, Energy_Harvesting_Rate)
+                self.tMVO[self.current_jj]=(tmvo+self.tMVO[self.current_jj]* self.current_ii) / (self.current_ii + 1)
+
+                self.tmvo_all[self.current_jj].append(tmvo)
+                if self.current_ii == 4:
+                    std = np.std(self.tmvo_all[self.current_jj])
+                    mean = self.tMVO[self.current_jj]
+                    data = {
+                        "std" : std,
+                        "mean" : mean,
+                    }
+
+
+
+                    df = pd.DataFrame(data, index=[0])
+                    write_df_as_text(df, f"time_at_{self.current_jj}", "exploration_time/")
+
+                for m in range(8):
+                    sleep = min(1.5 * self.current_jj + math.sqrt(self.current_jj + 1) , 15)
+                    #rospy.loginfo(f"sleep for {sleep}s.")
+                    rospy.sleep(sleep)
+                    self.current_m = m
                     #rospy.loginfo(f"we are at test {jj}, m is {m}")
 
                     # mvo + ga centralised
@@ -328,8 +381,9 @@ class CoordinatorNode:
                         best_CMVOGA, _ , tmvoga = self.exploitation(MAX_ITERATIONS, len(universes), robot_charge_duration, robots_coord, self.cached_tasks, 
                                 Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, "ga", universes)
      
-
+                        self.all_tCMVOGA[self.current_jj].append(tmvoga)
                         if ii!=0:
+                            
                             self.bestCMVOGA[jj]=max(self.bestCMVOGAmax[jj] , best_CMVOGA)
                             self.bestCMVOGAmin[jj]=min(self.bestCMVOGAmin[jj] , best_CMVOGA)
                              
@@ -348,7 +402,7 @@ class CoordinatorNode:
                         best_CGA,  _ , tga = self.exploitation(MAX_ITERATIONS, SWARM_SIZE, robot_charge_duration, robots_coord, self.cached_tasks, 
                                 Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, "ga")
 
-
+                        self.all_tCGA[self.current_jj].append(tga)
                         if ii!=0:
                             self.bestCGA[jj]=max(self.bestCGAmax[jj] , best_CGA)
                             self.bestCGAmin[jj]=min(self.bestCGAmin[jj] , best_CGA)
@@ -381,7 +435,7 @@ class CoordinatorNode:
                         best_CMVOPSO, tmvopso , _= self.exploitation(MAX_ITERATIONS, len(universes), robot_charge_duration, robots_coord, self.cached_tasks, 
                                 Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, "pso", universes)
 
-
+                        self.all_tCMVOPSO[self.current_jj].append(tmvopso)
                         if ii!=0:
                             self.bestCMVOPSO[jj]=max(self.bestCMVOPSOmax[jj] , best_CMVOPSO)
                             self.bestCMVOPSOmin[jj]=min(self.bestCMVOPSOmin[jj] , best_CMVOPSO)
@@ -397,7 +451,7 @@ class CoordinatorNode:
                     if m == 5:
                         best_CPSO, tpso ,_ = self.exploitation(MAX_ITERATIONS, SWARM_SIZE, robot_charge_duration, robots_coord, self.cached_tasks, 
                                 Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, "pso")
-
+                        self.all_tCPSO[self.current_jj].append(tpso)
                         if ii!=0:
                             self.bestCPSO[jj]=max(self.bestCPSOmax[jj] , best_CPSO)
                             self.bestCPSOmin[jj]=min(self.bestCPSOmin[jj] , best_CPSO)
@@ -426,6 +480,8 @@ class CoordinatorNode:
                     #log_coordinator_timing(pso_time=pso_c, CSV_FILE=CSV_FILE)
             self.M += 5
         self.plot()
+        self.std_mean_avg()
+        self.relative_errors()
         rospy.spin()
 
 
@@ -599,76 +655,98 @@ class CoordinatorNode:
         directory = "data/plots"
         os.makedirs(directory, exist_ok=True)
 
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.MM, self.tCMVOGA, marker="o", linestyle="-", color="red", label="tCMVOGA")
-        plt.plot(self.MM, self.tCGA, marker="*", linestyle="-", color="green", label="tCGA")
-
-        #plt.plot(self.MM, tMVOEA, marker="*", linestyle="-", color="black", label="bestMVOEA")
-        #plt.plot(self.MM, tMVOEU, marker="o", linestyle="-", color="black", label="bestMVOEU")
-
-        plt.plot(self.MM, self.tDMVOGA, marker="o", linestyle="-", color="blue", label="mtDMVOGA")
-        plt.plot(self.MM, self.tDGA, marker="*", linestyle="-", color="olive", label="tDGA")
-
-        plt.xlabel("M")
-        plt.ylabel("Values")
-        plt.title("tGA against M")
-        plt.legend()
-        plt.grid(True)
-        plt.savefig(os.path.join(directory, 'tGA'))
 
 
         plt.figure(figsize=(10, 6))
-        plt.plot(self.MM, self.bestCMVOGA, marker="o", linestyle="-", color="red", label="best_CMVOGA")
-        plt.plot(self.MM, self.bestCGA, marker="*", linestyle="-", color="green", label="best_CGA")
-
-        #plt.plot(self.MM, tMVOEA, marker="*", linestyle="-", color="black", label="bestMVOEA")
-        #plt.plot(self.MM, tMVOEU, marker="o", linestyle="-", color="black", label="bestMVOEU")
-
+        plt.plot(self.MM, self.bestCMVOPSO, marker="o", linestyle="--", color="red", label="best_CMVOPSO")
+        plt.plot(self.MM, self.bestCPSO, marker="*", linestyle="--", color="green", label="best_CPSO")
+        plt.plot(self.MM, self.bestCMVOGA, marker="o", linestyle="--", color="black", label="best_CMVOGA")
+        plt.plot(self.MM, self.bestCGA, marker="*", linestyle="--", color="yellow", label="best_CGA")
         plt.plot(self.MM, self.bestDMVOGA, marker="o", linestyle="-", color="blue", label="best_DMVOGA")
         plt.plot(self.MM, self.bestDGA, marker="*", linestyle="-", color="olive", label="best_DGA")
+        plt.plot(self.MM, self.bestDMVOPSO, marker="o", linestyle="-", color="cyan", label="best_DMVOPSO")
+        plt.plot(self.MM, self.bestDPSO, marker="*", linestyle="-", color="magenta", label="best_DPSO")
 
-        plt.xlabel("M")
-        plt.ylabel("Values")
-        plt.title("bestGA against M")
+        plt.xlabel("M number of Tasks")
+        plt.ylabel("completion time")
         plt.legend()
         plt.grid(True)
-        plt.savefig(os.path.join(directory, 'bestGA'))
+        plt.savefig(os.path.join(directory, 'completion_time'))
+
+
+
 
         plt.figure(figsize=(10, 6))
+        plt.plot(self.MM, self.tCMVOGA, marker="o", linestyle="-", color="black", label="tCMVOGA")
+        plt.plot(self.MM, self.tCGA, marker="*", linestyle="-", color="yellow", label="tCGA")
+        plt.plot(self.MM, self.tDMVOGA, marker="o", linestyle="-", color="blue", label="mtDMVOGA")
+        plt.plot(self.MM, self.tDGA, marker="*", linestyle="-", color="olive", label="tDGA")
         plt.plot(self.MM, self.tCMVOPSO, marker="o", linestyle="-", color="red", label="tCMVOPSO")
         plt.plot(self.MM, self.tCPSO, marker="*", linestyle="-", color="green", label="tCPSO")
+        plt.plot(self.MM, self.tDMVOPSO, marker="o", linestyle="-", color="cyan", label="mtDMVOPSO")
+        plt.plot(self.MM, self.tDPSO, marker="*", linestyle="-", color="magenta", label="tDPSO")
 
-        #plt.plot(self.MM, tMVOEA, marker="*", linestyle="-", color="black", label="bestMVOEA")
-        #plt.plot(self.MM, tMVOEU, marker="o", linestyle="-", color="black", label="bestMVOEU")
-
-        plt.plot(self.MM, self.tDMVOPSO, marker="o", linestyle="-", color="blue", label="mtDMVOPSO")
-        plt.plot(self.MM, self.tDPSO, marker="*", linestyle="-", color="olive", label="tDPSO")
-
-        plt.xlabel("M")
-        plt.ylabel("Values")
-        plt.title("tPSO against M")
+        plt.xlabel("M number of tasks")
+        plt.ylabel("simulation time")
         plt.legend()
         plt.grid(True)
-        plt.savefig(os.path.join(directory, 'tPSO'))
-
-
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.MM, self.bestCMVOPSO, marker="o", linestyle="-", color="red", label="best_CMVOPSO")
-        plt.plot(self.MM, self.bestCPSO, marker="*", linestyle="-", color="green", label="best_CPSO")
-
-        #plt.plot(self.MM, tMVOEA, marker="*", linestyle="-", color="black", label="bestMVOEA")
-        #plt.plot(self.MM, tMVOEU, marker="o", linestyle="-", color="black", label="bestMVOEU")
-
-        plt.plot(self.MM, self.bestDMVOPSO, marker="o", linestyle="-", color="blue", label="best_DMVOPSO")
-        plt.plot(self.MM, self.bestDPSO, marker="*", linestyle="-", color="olive", label="best_DPSO")
-
-        plt.xlabel("M")
-        plt.ylabel("Values")
-        plt.title("bestPSO against M")
-        plt.legend()
-        plt.grid(True)
-        plt.savefig(os.path.join(directory, 'bestPSO'))
+        plt.savefig(os.path.join(directory, 'simulation time'))
         
+
+    def std_mean_avg(self):
+        methods = [
+            ('DMVOPSO_STD', self.tDMVOPSO, self.all_tDMVOPSO),
+            ('DMVOGA_STD', self.tDMVOGA, self.all_tDMVOGA),
+            ('DPSO_STD', self.tDPSO, self.all_tDPSO),
+            ('DGA_STD', self.tDGA, self.all_tDGA),
+            ('CMVOPSO_STD', self.tCMVOPSO, self.all_tDMVOPSO),
+            ('CMVOGA_STD', self.tCMVOGA, self.all_tDMVOGA),
+            ('CPSO_STD', self.tCPSO, self.all_tDPSO),
+            ('CGA_STD', self.tCGA, self.all_tDGA),
+        ]
+
+        rows = []
+        for method_name, best_val, all_runs in methods:
+            stds = [np.std(run) for run in all_runs[:self.Ntest]]
+            rows.append({
+                'Method': method_name,
+                'best': best_val,
+                'Std': stds
+            })
+
+        df = pd.DataFrame(rows)
+        write_df_as_text(df, "big_collumn", "mean_avg/")
+
+
+
+
+        
+
+    def relative_errors(self):
+        DMVOPSOORE=(((self.bestDMVOPSOmin-self.bestDMVOGAmin)/self.bestDMVOGAmin)*100)
+        DMVOPSOARE=(((self.bestDMVOPSO-self.bestDMVOGAmin)/self.bestDMVOGAmin)*100)
+        DMVOPSOWRE=(((self.bestDMVOPSOmax-self.bestDMVOGAmin)/self.bestDMVOGAmin)*100)
+        DMVOGAORE=(((self.bestDMVOGAmin-self.bestDMVOGAmin)/self.bestDMVOGAmin)*100)
+        DMVOGAARE=(((self.bestDMVOGA-self.bestDMVOGAmin)/self.bestDMVOGAmin)*100)
+        DMVOGAWRE=(((self.bestDMVOGAmax-self.bestDMVOGAmin)/self.bestDMVOGAmin)*100)
+
+
+        # Creating a table using Pandas DataFrame
+        data = {
+            'DMVOPSO ORE': DMVOPSOORE,
+            'DMVOPSO ARE': DMVOPSOARE,
+            'DMVOPSO WRE': DMVOPSOWRE,
+            'DMVOGA ORE': DMVOGAORE,
+            'DMVOGA ARE': DMVOGAARE,
+            'DMVOGA WRE': DMVOGAWRE,
+        }
+
+
+        df = pd.DataFrame(data)
+        write_df_as_text(df, f"re", "relative_errors")
+
+
+
 
 
 class ExplorationAllocator:

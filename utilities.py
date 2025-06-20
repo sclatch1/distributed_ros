@@ -23,6 +23,14 @@ def write_np_to_file(array, filename:str, folder) -> None:
         array = array.reshape(1, -1)
     np.savetxt(filepath, array, fmt='%d', delimiter=' ')
 
-def write_to_file(input , filename: str) -> None:
-    with open('data/' + filename + '.txt', 'w') as f:
+def write_to_file(input , folder, filename: str) -> None:
+    os.makedirs(f"data/{folder}", exist_ok=True)
+    with open('data/' + folder + filename + '.txt', 'w') as f:
         f.write(str(input))
+
+
+def write_df_as_text(df, filename: str, folder: str) -> None:
+    os.makedirs(f"data/{folder}", exist_ok=True)
+    filepath = os.path.join(f"data/{folder}", filename)
+    with open(filepath, 'w') as f:
+        f.write(df.to_string(index=False))
