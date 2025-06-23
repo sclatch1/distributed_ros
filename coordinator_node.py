@@ -51,7 +51,7 @@ class CoordinatorNode:
     def __init__(self):
         self.coordinator_coords = (0,0)
         self.timings = {}
-        self.Ntest = 10
+        self.Ntest = 1
         self.MM = np.zeros(self.Ntest)
 
         # parameters for functions
@@ -83,8 +83,8 @@ class CoordinatorNode:
         rospy.Subscriber('/fitness_value', FitnessValue, self.fitness_value_callback)
 
         # run() variables
-        self.M = 30
-        self.N = 6
+        self.M = 100
+        self.N = 40
         self.MM = np.zeros(self.Ntest)
         self.received = False
 
@@ -200,9 +200,13 @@ class CoordinatorNode:
 
 
     def get_robot_info(self):
-        robot_names = ['robot1', 'robot2', 'robot3', 'robot4', 'robot5', 'robot6', 'robot7', 
+        robot_names = ['robot1', 'robot2', 'robot3', 'robot4', 'robot5', 'robot6', 'robot7',
                     'robot8', 'robot9', 'robot10', 'robot11', 'robot12', 'robot13', 'robot14'
-                    , 'robot15', 'robot16', 'robot17', 'robot18', 'robot19', 'robot20']  # Example robot names
+                    , 'robot15', 'robot16', 'robot17', 'robot18', 'robot19', 'robot20'
+                    ,'robot15', 'robot16', 'robot17', 'robot18', 'robot19', 'robot20',
+                    'robot1','robot21','robot22','robot23','robot24','robot25','robot26',
+                    'robot27','robot28','robot29','robot30','robot31','robot32','robot33',
+                    'robot34','robot35','robot36','robot37','robot38','robot39','robot40'] 
 
         
         robot_names = robot_names[0:self.N]
@@ -309,21 +313,7 @@ class CoordinatorNode:
                     self.bestDPSO[current_jj]=self.best_fitness
                     self.bestDPSOmax[current_jj]=self.best_fitness
                     self.bestDPSOmin[current_jj]=self.best_fitness
-            #rospy.sleep(1)
-            #self.received = False
-            #sleep = 5
-            #rospy.sleep(sleep)
-            #rospy.loginfo(f"sleeping for {sleep}s")
-            """
-            rospy.loginfo(f"BESTtDMVOPSO {self.tDMVOPSO}")
-            rospy.loginfo(f"BESTtDMVOGA {self.tDMVOGA}")
-            rospy.loginfo(f"BESTtDPSO {self.tDPSO}")
-            rospy.loginfo(f"BESTtDGA {self.tDGA}")
-            rospy.loginfo(f"BESTtCMVOPSO {self.tCMVOPSO}")
-            rospy.loginfo(f"BESTtCMVOGA {self.tCMVOGA}")
-            rospy.loginfo(f"BESTtCPSO {self.tCPSO}")
-            rospy.loginfo(f"BESTtCGA {self.tCGA}")
-            """
+
             self.reset_iteration_data()
             
 
@@ -353,7 +343,7 @@ class CoordinatorNode:
 
 
 
-            for ii in range(5):
+            for ii in range(1):
                 self.current_ii = ii
                 #rospy.loginfo("go to sleep...")
                 universes, tmvo = self.explore(MAX_ITERATIONS, SWARM_SIZE, 
@@ -577,7 +567,7 @@ class CoordinatorNode:
 
 
             
-            msg.header = Header(stamp=rospy.Time.now())
+            msg.start_communication = rospy.Time.now()
             pub.publish(msg)
 
     

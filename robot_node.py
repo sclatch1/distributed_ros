@@ -30,7 +30,7 @@ class RobotNode:
         self.x        = float(os.environ.get("ROBOT_X", "0.0"))
         self.y        = float(os.environ.get("ROBOT_Y", "0.0"))
         self.battery  = float(os.environ.get("BATTERY", "100.0"))
-        self.Ntest    = 10
+        self.Ntest    = 1
         self.communication_time = np.zeros(self.Ntest)
         self.communication_time_all = [[] for _ in range(self.Ntest)] 
         self.m        = 0 
@@ -80,7 +80,11 @@ class RobotNode:
     def parameters_callback(self, msg):
         send_time = msg.header.stamp
         recv_time = rospy.Time.now()
-
+        
+        if self.m <= 7:
+            self.m += 1
+        else:
+            self.m = 0
 
         communicate = (recv_time - send_time).to_sec()
 
@@ -88,9 +92,6 @@ class RobotNode:
         self.cach_task(msg)
         self.cach_robot_status(msg)
         self.cach_universe(msg)
-        self.m = msg.m
-        self.i = msg.i
-        self.j = msg.j
         self.communication_time[self.j]=(communicate+self.communication_time[self.j]* self.i) / (self.i + 1)
         self.communication_time_all[self.j].append(communicate)
         if self.i == 4 and (self.j == 0 or self.j == (self.Ntest -1)):
@@ -111,9 +112,6 @@ class RobotNode:
 
         val.communication = rospy.Time.now()
         val.start_time = start_time
-        val.m = self.m
-        val.j = self.j
-        val.i = self.i
         self.fitness_pub.publish(val)
         
         #rospy.loginfo(f"[{robot_name}] /fitness_value publisher connections: {fitness_pub.get_num_connections()}")
