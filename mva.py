@@ -12,7 +12,7 @@ def multiverse_algorithm(MAX_ITERATIONS,
                         Charging_station,
                         CHARGING_TIME,
                         Energy_Harvesting_Rate,
-                        eps=0.2,
+                        eps=5,
                         capture_steps=False):
     """
     Multiverse Algorithm (MVA) implementation based on multiverse theory

@@ -139,7 +139,7 @@ class RobotNode:
         CHARGING_TIME = 0.5 * 3600  # s
         iterationstop = 15
         Charging_station = (-1.6, 7.2)
-        POP_SIZE = 150
+        POP_SIZE = 400
         MAX_ITERATIONS = 50
 
         N = len(self.cached_robot_statuses)  # number of robots

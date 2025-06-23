@@ -53,6 +53,7 @@ class CoordinatorNode:
         self.timings = {}
         self.Ntest = 10
         self.MM = np.zeros(self.Ntest)
+        self.NN = np.zeros(self.Ntest)
 
         # parameters for functions
         self.current_jj = 0
@@ -83,7 +84,7 @@ class CoordinatorNode:
         rospy.Subscriber('/fitness_value', FitnessValue, self.fitness_value_callback)
 
         # run() variables
-        self.M = 30
+        self.M = 100
         self.N = 6
         self.MM = np.zeros(self.Ntest)
         self.received = False
@@ -252,7 +253,7 @@ class CoordinatorNode:
 
         if len(self.fitnesses) == self.N:            
             self.received = True
-            rospy.loginfo(f"this is jj {current_jj} and m is {m} and fitness is {self.best_fitness} solve {self.solve_time} " )
+            #rospy.loginfo(f"this is jj {current_jj} and m is {m} and fitness is {self.best_fitness} solve {self.solve_time} " )
 
             if m == 4:
                 self.all_tDMVOGA[current_jj].append(self.solve_time)
@@ -333,13 +334,14 @@ class CoordinatorNode:
 
     def run(self):        
         for jj in range(self.Ntest):
-            self.MM[jj] = self.M
+            #self.MM[jj] = self.M
+            self.NN[jj] = self.N
             self.current_jj = jj
             rospy.loginfo(f"current jj : {self.current_jj}")
             # getting the tasks
             self.m_pub.publish(Int32(data=self.M))
 
-            rospy.sleep(1)
+            rospy.sleep(5)
             
             # getting the robots location and battery level
             robots_info = self.get_robot_info()
@@ -383,7 +385,7 @@ class CoordinatorNode:
                     
 
                     self.current_m = m
-                    rospy.loginfo(f"we are at test {jj}, m is {m}")
+                    #rospy.loginfo(f"we are at test {jj}, m is {m}")
 
                     # mvo + ga centralised
                     if m == 0:
@@ -406,7 +408,7 @@ class CoordinatorNode:
                             self.bestCMVOGA[jj]=best_CMVOGA
                             self.bestCMVOGAmax[jj]=best_CMVOGA
                             self.bestCMVOGAmin[jj]=best_CMVOGA
-                        rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CMVOGA} solve {tmvoga} " )
+                        #rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CMVOGA} solve {tmvoga} " )
                         
                     
                     # ga centralised
@@ -426,7 +428,7 @@ class CoordinatorNode:
                             self.bestCGA[jj]=best_CGA
                             self.bestCGAmax[jj]=best_CGA
                             self.bestCGAmin[jj]=best_CGA
-                        rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CGA} solve {tga} " )
+                        #rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CGA} solve {tga} " )
 
 
 
@@ -447,7 +449,7 @@ class CoordinatorNode:
                             self.bestCMVOPSO[jj]=best_CMVOPSO
                             self.bestCMVOPSOmax[jj]=best_CMVOPSO
                             self.bestCMVOPSOmin[jj]=best_CMVOPSO
-                        rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CMVOPSO} solve {tmvopso} " )
+                        #rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CMVOPSO} solve {tmvopso} " )
                     # pso centralised
                     if m == 3:
                         best_CPSO, tpso ,_ = self.exploitation(MAX_ITERATIONS, SWARM_SIZE, robot_charge_duration, robots_coord, self.cached_tasks, 
@@ -464,7 +466,7 @@ class CoordinatorNode:
                             self.bestCPSO[jj]=best_CPSO
                             self.bestCPSOmax[jj]=best_CPSO
                             self.bestCPSOmin[jj]=best_CPSO
-                        rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CPSO} solve {tpso} " )
+                        #rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CPSO} solve {tpso} " )
 
 
 
@@ -499,13 +501,13 @@ class CoordinatorNode:
                     if m in {4,5,6,7}:
                         while not self.received:
                             rospy.sleep(1)
-                        rospy.loginfo(f"received is {self.received}")
+                        #rospy.loginfo(f"received is {self.received}")
                         self.received = False
 
                         
                     #CSV_FILE = 'data/coord_timing_central.csv'
                     #log_coordinator_timing(pso_time=pso_c, CSV_FILE=CSV_FILE)
-            self.M += 5
+            self.N += 1
         rospy.sleep(15)
         self.plot()
 
@@ -595,8 +597,8 @@ class CoordinatorNode:
         CHARGING_TIME = 0.5 * 3600  # s
         iterationstop = 15
         Charging_station = (-1.6, 7.2)
-        SWARM_SIZE = 150
-        POP_SIZE = 150
+        SWARM_SIZE = 200
+        #POP_SIZE = 150
         MAX_ITERATIONS = 50
 
 
@@ -689,14 +691,14 @@ class CoordinatorNode:
 
 
         plt.figure(figsize=(10, 6))
-        plt.plot(self.MM, self.bestCMVOPSO, marker="o", linestyle="--", color="red", label="best_CMVOPSO")
-        plt.plot(self.MM, self.bestCPSO, marker="*", linestyle="--", color="green", label="best_CPSO")
-        plt.plot(self.MM, self.bestCMVOGA, marker="o", linestyle="--", color="black", label="best_CMVOGA")
-        plt.plot(self.MM, self.bestCGA, marker="*", linestyle="--", color="yellow", label="best_CGA")
-        plt.plot(self.MM, self.bestDMVOGA, marker="o", linestyle="-", color="blue", label="best_DMVOGA")
-        plt.plot(self.MM, self.bestDGA, marker="*", linestyle="-", color="olive", label="best_DGA")
-        plt.plot(self.MM, self.bestDMVOPSO, marker="o", linestyle="-", color="cyan", label="best_DMVOPSO")
-        plt.plot(self.MM, self.bestDPSO, marker="*", linestyle="-", color="magenta", label="best_DPSO")
+        plt.plot(self.NN, self.bestCMVOPSO, marker="o", linestyle="--", color="red", label="best_CMVOPSO")
+        plt.plot(self.NN, self.bestCPSO, marker="*", linestyle="--", color="green", label="best_CPSO")
+        plt.plot(self.NN, self.bestCMVOGA, marker="o", linestyle="--", color="black", label="best_CMVOGA")
+        plt.plot(self.NN, self.bestCGA, marker="*", linestyle="--", color="yellow", label="best_CGA")
+        plt.plot(self.NN, self.bestDMVOGA, marker="o", linestyle="-", color="blue", label="best_DMVOGA")
+        plt.plot(self.NN, self.bestDGA, marker="*", linestyle="-", color="olive", label="best_DGA")
+        plt.plot(self.NN, self.bestDMVOPSO, marker="o", linestyle="-", color="cyan", label="best_DMVOPSO")
+        plt.plot(self.NN, self.bestDPSO, marker="*", linestyle="-", color="magenta", label="best_DPSO")
 
         plt.xlabel("M number of Tasks")
         plt.ylabel("completion time")
@@ -708,14 +710,14 @@ class CoordinatorNode:
 
 
         plt.figure(figsize=(10, 6))
-        plt.plot(self.MM, self.tCMVOGA, marker="o", linestyle="-", color="black", label="tCMVOGA")
-        plt.plot(self.MM, self.tCGA, marker="*", linestyle="-", color="yellow", label="tCGA")
-        plt.plot(self.MM, self.tDMVOGA, marker="o", linestyle="-", color="blue", label="tDMVOGA")
-        plt.plot(self.MM, self.tDGA, marker="*", linestyle="-", color="olive", label="tDGA")
-        plt.plot(self.MM, self.tCMVOPSO, marker="o", linestyle="-", color="red", label="tCMVOPSO")
-        plt.plot(self.MM, self.tCPSO, marker="*", linestyle="-", color="green", label="tCPSO")
-        plt.plot(self.MM, self.tDMVOPSO, marker="o", linestyle="-", color="cyan", label="tDMVOPSO")
-        plt.plot(self.MM, self.tDPSO, marker="*", linestyle="-", color="magenta", label="tDPSO")
+        plt.plot(self.NN, self.tCMVOGA, marker="o", linestyle="-", color="black", label="tCMVOGA")
+        plt.plot(self.NN, self.tCGA, marker="*", linestyle="-", color="yellow", label="tCGA")
+        plt.plot(self.NN, self.tDMVOGA, marker="o", linestyle="-", color="blue", label="tDMVOGA")
+        plt.plot(self.NN, self.tDGA, marker="*", linestyle="-", color="olive", label="tDGA")
+        plt.plot(self.NN, self.tCMVOPSO, marker="o", linestyle="-", color="red", label="tCMVOPSO")
+        plt.plot(self.NN, self.tCPSO, marker="*", linestyle="-", color="green", label="tCPSO")
+        plt.plot(self.NN, self.tDMVOPSO, marker="o", linestyle="-", color="cyan", label="tDMVOPSO")
+        plt.plot(self.NN, self.tDPSO, marker="*", linestyle="-", color="magenta", label="tDPSO")
 
         plt.xlabel("M number of tasks")
         plt.ylabel("simulation time")
