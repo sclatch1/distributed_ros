@@ -85,7 +85,7 @@ class CoordinatorNode:
 
         # run() variables
         self.M = 100
-        self.N = 6
+        self.N = 40
         self.MM = np.zeros(self.Ntest)
         self.received = False
 
@@ -203,7 +203,10 @@ class CoordinatorNode:
     def get_robot_info(self):
         robot_names = ['robot1', 'robot2', 'robot3', 'robot4', 'robot5', 'robot6', 'robot7', 
                     'robot8', 'robot9', 'robot10', 'robot11', 'robot12', 'robot13', 'robot14'
-                    , 'robot15', 'robot16', 'robot17', 'robot18', 'robot19', 'robot20']  # Example robot names
+                    ,'robot15', 'robot16', 'robot17', 'robot18', 'robot19', 'robot20',
+                    'robot1','robot21','robot22','robot23','robot24','robot25','robot26',
+                    'robot27','robot28','robot29','robot30','robot31','robot32','robot33',
+                    'robot34','robot35','robot36','robot37','robot38','robot39','robot40']  # Example robot names
 
         
         robot_names = robot_names[0:self.N]

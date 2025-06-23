@@ -23,6 +23,7 @@ services:
       - ROS_MASTER_URI=http://ros-master:11311
     volumes:
       - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      
 
 
   tasknode:
@@ -36,7 +37,8 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - ROS_MASTER_URI=http://ros-master:11311
-
+    volumes:
+      - ~/Desktop/coordinator_data:/root/catkin_ws/data
   
 
 
@@ -53,10 +55,11 @@ services:
       - PYTHONUNBUFFERED=1
       - ROS_MASTER_URI=http://ros-master:11311
       - ROBOT_X=-4.5
-      - ROBOT_Y=-4.0
-      - BATTERY=32.9
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROBOT_Y=3.0
+      - BATTERY=99.4
+
+      
+
   robot2:
     build:
       context: .
@@ -69,11 +72,11 @@ services:
       - ROBOT_NAME=robot2
       - PYTHONUNBUFFERED=1
       - ROS_MASTER_URI=http://ros-master:11311
-      - ROBOT_X=3.5
-      - ROBOT_Y=1.5
-      - BATTERY=45.1
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROBOT_X=-3.0
+      - ROBOT_Y=3.0
+      - BATTERY=20.5
+
+      
 
   robot3:
     build:
@@ -87,11 +90,12 @@ services:
       - ROBOT_NAME=robot3
       - PYTHONUNBUFFERED=1
       - ROS_MASTER_URI=http://ros-master:11311
-      - ROBOT_X=5.5
-      - ROBOT_Y=-10
-      - BATTERY=27.7
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROBOT_X=-0.5
+      - ROBOT_Y=-7.0
+      - BATTERY=76.7
+
+      
+
   robot4:
     build:
       context: .
@@ -104,11 +108,11 @@ services:
       - ROBOT_NAME=robot4
       - PYTHONUNBUFFERED=1
       - ROS_MASTER_URI=http://ros-master:11311
-      - ROBOT_X=3.5
-      - ROBOT_Y=-5.6
-      - BATTERY=63.3
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROBOT_X=1.8
+      - ROBOT_Y=8.0
+      - BATTERY=75.3
+
+      
 
   robot5:
     build:
@@ -123,11 +127,11 @@ services:
       - PYTHONUNBUFFERED=1
       - ROS_MASTER_URI=http://ros-master:11311
       - ROBOT_X=-4.5
-      - ROBOT_Y=2
-      - BATTERY=20.0
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
-  
+      - ROBOT_Y=2.0
+      - BATTERY=65.0
+
+      
+
   robot6:
     build:
       context: .
@@ -139,11 +143,12 @@ services:
     environment:
       - ROBOT_NAME=robot6
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=-4.5
-      - ROBOT_Y=-7
-      - BATTERY=43.7
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-0.5
+      - ROBOT_Y=5.0
+      - BATTERY=84.9
+
+      
 
   robot7:
     build:
@@ -156,11 +161,12 @@ services:
     environment:
       - ROBOT_NAME=robot7
       - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
       - ROBOT_X=5.5
-      - ROBOT_Y=-5.6
-      - BATTERY=40.0
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROBOT_Y=-4.0
+      - BATTERY=61.9
+
+      
 
   robot8:
     build:
@@ -173,11 +179,12 @@ services:
     environment:
       - ROBOT_NAME=robot8
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=3.5
-      - ROBOT_Y=-10
-      - BATTERY=40.0
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-0.5
+      - ROBOT_Y=4.0
+      - BATTERY=74.1
+
+      
 
   robot9:
     build:
@@ -190,11 +197,12 @@ services:
     environment:
       - ROBOT_NAME=robot9
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=-4.5
-      - ROBOT_Y=1
-      - BATTERY=40.0
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-0.5
+      - ROBOT_Y=-8.0
+      - BATTERY=54.9
+
+      
 
   robot10:
     build:
@@ -207,11 +215,12 @@ services:
     environment:
       - ROBOT_NAME=robot10
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=-3
-      - ROBOT_Y=9
-      - BATTERY=40.0
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=-5.0
+      - BATTERY=64.1
+
+      
 
   robot11:
     build:
@@ -224,11 +233,12 @@ services:
     environment:
       - ROBOT_NAME=robot11
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=5.5
-      - ROBOT_Y=-7.8
-      - BATTERY=56.9
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=8.0
+      - BATTERY=48.6
+
+      
 
   robot12:
     build:
@@ -241,11 +251,12 @@ services:
     environment:
       - ROBOT_NAME=robot12
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=3.5
-      - ROBOT_Y=-2.5
-      - BATTERY=42.0
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=-2.0
+      - BATTERY=29.4
+
+      
 
   robot13:
     build:
@@ -258,12 +269,12 @@ services:
     environment:
       - ROBOT_NAME=robot13
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=5.5
-      - ROBOT_Y=1.5
-      - BATTERY=23.7
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-3.0
+      - ROBOT_Y=8.0
+      - BATTERY=87.9
 
+      
 
   robot14:
     build:
@@ -276,11 +287,12 @@ services:
     environment:
       - ROBOT_NAME=robot14
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=-0.5
-      - ROBOT_Y=5
-      - BATTERY=53.4
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=-4.0
+      - BATTERY=82.3
+
+      
 
   robot15:
     build:
@@ -293,12 +305,12 @@ services:
     environment:
       - ROBOT_NAME=robot15
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=-0.5
-      - ROBOT_Y=3
-      - BATTERY=47.3
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=3.5
+      - ROBOT_Y=2.5
+      - BATTERY=34.3
 
+      
 
   robot16:
     build:
@@ -311,11 +323,13 @@ services:
     environment:
       - ROBOT_NAME=robot16
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=-0.5
-      - ROBOT_Y=1.8
-      - BATTERY=29.2
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=3.5
+      - ROBOT_Y=-10.0
+      - BATTERY=53.9
+
+      
+
   robot17:
     build:
       context: .
@@ -327,11 +341,12 @@ services:
     environment:
       - ROBOT_NAME=robot17
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=1.8
-      - ROBOT_Y=6
-      - BATTERY=25.2
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-3.0
+      - ROBOT_Y=9.0
+      - BATTERY=49.2
+
+      
 
   robot18:
     build:
@@ -344,11 +359,12 @@ services:
     environment:
       - ROBOT_NAME=robot18
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=-0.5
-      - ROBOT_Y=6
-      - BATTERY=25.2
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=5.0
+      - BATTERY=42.3
+
+      
 
   robot19:
     build:
@@ -361,11 +377,12 @@ services:
     environment:
       - ROBOT_NAME=robot19
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=3.5
-      - ROBOT_Y=2.5
-      - BATTERY=25.2
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=1.8
+      - ROBOT_Y=7.0
+      - BATTERY=23.5
+
+      
 
   robot20:
     build:
@@ -378,12 +395,371 @@ services:
     environment:
       - ROBOT_NAME=robot20
       - PYTHONUNBUFFERED=1
-      - ROBOT_X=5.5
-      - ROBOT_Y=-5.6
-      - BATTERY=25.2
-    volumes:
-      - ~/Desktop/coordinator_data:/root/catkin_ws/data
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=3.5
+      - ROBOT_Y=-2.5
+      - BATTERY=46.8
 
+      
+
+  robot21:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot21
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot21
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=6.0
+      - BATTERY=81.6
+
+      
+
+  robot22:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot22
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot22
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=3.5
+      - ROBOT_Y=-7.8
+      - BATTERY=72.7
+
+      
+
+  robot23:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot23
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot23
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=5.5
+      - ROBOT_Y=-7.8
+      - BATTERY=27.8
+
+      
+
+  robot24:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot24
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot24
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=5.5
+      - ROBOT_Y=2.5
+      - BATTERY=36.5
+
+      
+
+  robot25:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot25
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot25
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=0.0
+      - BATTERY=79.2
+
+      
+
+  robot26:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot26
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot26
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-0.5
+      - ROBOT_Y=6.0
+      - BATTERY=45.0
+
+      
+
+  robot27:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot27
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot27
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-0.5
+      - ROBOT_Y=3.0
+      - BATTERY=74.8
+
+      
+
+  robot28:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot28
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot28
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-3.0
+      - ROBOT_Y=7.0
+      - BATTERY=26.9
+
+      
+
+  robot29:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot29
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot29
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=-1.0
+      - BATTERY=71.4
+
+      
+
+  robot30:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot30
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot30
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-0.5
+      - ROBOT_Y=1.8
+      - BATTERY=89.3
+
+      
+
+  robot31:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot31
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot31
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-3.0
+      - ROBOT_Y=6.0
+      - BATTERY=86.1
+
+      
+
+  robot32:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot32
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot32
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=3.5
+      - ROBOT_Y=1.5
+      - BATTERY=84.1
+
+      
+
+  robot33:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot33
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot33
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=7.0
+      - BATTERY=65.6
+
+      
+
+  robot34:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot34
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot34
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=-3.0
+      - BATTERY=67.7
+
+      
+
+  robot35:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot35
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot35
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=5.5
+      - ROBOT_Y=-10.0
+      - BATTERY=96.0
+
+      
+
+  robot36:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot36
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot36
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=-8.0
+      - BATTERY=99.3
+
+
+
+  robot37:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot37
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot37
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=4.0
+      - BATTERY=30.0
+
+
+
+  robot38:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot38
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot38
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=1.8
+      - ROBOT_Y=6.0
+      - BATTERY=71.5
+
+
+  robot39:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot39
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot39
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-4.5
+      - ROBOT_Y=-7.0
+      - BATTERY=65.9
+
+      
+
+  robot40:
+    build:
+      context: .
+      dockerfile: robot_docker/Dockerfile
+    container_name: robot40
+    depends_on:
+      - ros-master
+    networks: [ rosnet ]
+    environment:
+      - ROBOT_NAME=robot40
+      - PYTHONUNBUFFERED=1
+      - ROS_MASTER_URI=http://ros-master:11311
+      - ROBOT_X=-3.0
+      - ROBOT_Y=2.0
+      - BATTERY=79.3
+
+      
 
 
 networks:
