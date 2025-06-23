@@ -44,7 +44,7 @@ COPY fitness_eu.py src/coordinator_pkg/scripts/fitness_eu.py
 COPY table.py src/coordinator_pkg/scripts/table.py
 COPY utilities.py src/coordinator_pkg/scripts/utilities.py
 COPY lookup_table.pkl src/coordinator_pkg/scripts/lookup_table.pkl
-
+COPY mva.py src/coordinator_pkg/scripts/mva.py
 
 # copy CMakeLists.txt
 COPY coordinator_docker/CMakeLists.txt src/coordinator_pkg/CMakeLists.txt

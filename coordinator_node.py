@@ -17,6 +17,7 @@ random.seed(SEED)
 from mvo import mvo_exploration 
 from pso import PSO_Algorithm
 from ga import genetic_algorithm
+from mva import multiverse_algorithm
 
 
 import rospy
@@ -82,10 +83,10 @@ class CoordinatorNode:
         rospy.Subscriber('/fitness_value', FitnessValue, self.fitness_value_callback)
 
         # run() variables
-        self.M = 10
+        self.M = 30
         self.N = 6
         self.MM = np.zeros(self.Ntest)
-
+        self.received = False
 
         self.allocator = ExplorationAllocator(BYTES_PER_INT,BITS_PER_BYTE,E_ELEC,E_AMP,PATH_LOSS_EXPONENT)
 
@@ -182,11 +183,11 @@ class CoordinatorNode:
                 communicate = max(self.timings.values())
                 self.communication_time_all[self.current_jj].append(communicate)
                 self.communication_time[self.current_jj]=(communicate+self.communication_time[self.current_jj]* self.current_ii) / (self.current_ii + 1)
-          
-                std = np.std(self.communication_time_all[self.current_jj])
-                mean = self.communication_time[self.current_jj]
-                df = pd.DataFrame({'Std_Comm_Time': [std], 'mean_comm_time': [mean]})
-                write_df_as_text(df, f"coordinator_{self.current_jj}", f"std_communication_c/")
+                if (self.current_jj == 0 or self.current_jj == (self.Ntest -1)):
+                    std = np.std(self.communication_time_all[self.current_jj])
+                    mean = self.communication_time[self.current_jj]
+                    df = pd.DataFrame({'Std_Comm_Time': [std], 'mean_comm_time': [mean]})
+                    write_df_as_text(df, f"coordinator_{self.current_jj}", f"std_communication_c/")
                 self.timings.clear()
             
             #rospy.loginfo(f"this is the com time: {self.communication_time}")
@@ -236,7 +237,7 @@ class CoordinatorNode:
         m = msg.m
         current_jj = msg.j
         current_ii = msg.i
-        #rospy.loginfo(f"this is ii {current_ii} and m is {m} " )
+        rospy.loginfo(f"this is ii {current_ii} and m is {m} " )
 
 
         self.fitnesses[recv_time] = msg.fitness
@@ -250,9 +251,10 @@ class CoordinatorNode:
 
 
         if len(self.fitnesses) == self.N:            
-            #rospy.loginfo(f"this is jj {current_jj} and m is {m} and fitness is {self.best_fitness} solve {self.solve_time} " )
+            self.received = True
+            rospy.loginfo(f"this is jj {current_jj} and m is {m} and fitness is {self.best_fitness} solve {self.solve_time} " )
 
-            if m == 2:
+            if m == 4:
                 self.all_tDMVOGA[current_jj].append(self.solve_time)
                 if current_ii!=0:
                     self.bestDMVOGA[current_jj]=max(self.bestDMVOGAmax[current_jj] , self.best_fitness)
@@ -266,7 +268,7 @@ class CoordinatorNode:
                     self.bestDMVOGAmax[current_jj]=self.best_fitness
                     self.bestDMVOGAmin[current_jj]=self.best_fitness
 
-            elif m == 3:
+            elif m == 5:
                 self.all_tDGA[current_jj].append(self.solve_time)
                 if current_ii!=0:
                     self.bestDGA[current_jj]=max(self.bestDGAmax[current_jj] , self.best_fitness)
@@ -307,17 +309,21 @@ class CoordinatorNode:
                     self.bestDPSO[current_jj]=self.best_fitness
                     self.bestDPSOmax[current_jj]=self.best_fitness
                     self.bestDPSOmin[current_jj]=self.best_fitness
-                rospy.sleep(2)
-                """
-                rospy.loginfo(f"BESTtDMVOPSO {self.tDMVOPSO}")
-                rospy.loginfo(f"BESTtDMVOGA {self.tDMVOGA}")
-                rospy.loginfo(f"BESTtDPSO {self.tDPSO}")
-                rospy.loginfo(f"BESTtDGA {self.tDGA}")
-                rospy.loginfo(f"BESTtCMVOPSO {self.tCMVOPSO}")
-                rospy.loginfo(f"BESTtCMVOGA {self.tCMVOGA}")
-                rospy.loginfo(f"BESTtCPSO {self.tCPSO}")
-                rospy.loginfo(f"BESTtCGA {self.tCGA}")
-                """
+            #rospy.sleep(1)
+            #self.received = False
+            #sleep = 5
+            #rospy.sleep(sleep)
+            #rospy.loginfo(f"sleeping for {sleep}s")
+            """
+            rospy.loginfo(f"BESTtDMVOPSO {self.tDMVOPSO}")
+            rospy.loginfo(f"BESTtDMVOGA {self.tDMVOGA}")
+            rospy.loginfo(f"BESTtDPSO {self.tDPSO}")
+            rospy.loginfo(f"BESTtDGA {self.tDGA}")
+            rospy.loginfo(f"BESTtCMVOPSO {self.tCMVOPSO}")
+            rospy.loginfo(f"BESTtCMVOGA {self.tCMVOGA}")
+            rospy.loginfo(f"BESTtCPSO {self.tCPSO}")
+            rospy.loginfo(f"BESTtCGA {self.tCGA}")
+            """
             self.reset_iteration_data()
             
 
@@ -355,8 +361,9 @@ class CoordinatorNode:
                         Charging_station, CHARGING_TIME, Energy_Harvesting_Rate)
                 self.tMVO[self.current_jj]=(tmvo+self.tMVO[self.current_jj]* self.current_ii) / (self.current_ii + 1)
 
+
                 self.tmvo_all[self.current_jj].append(tmvo)
-                if self.current_ii == 4:
+                if self.current_ii == 4 and (self.current_jj == 0 or self.current_jj == (self.Ntest -1)):
                     std = np.std(self.tmvo_all[self.current_jj])
                     mean = self.tMVO[self.current_jj]
                     data = {
@@ -370,11 +377,13 @@ class CoordinatorNode:
                     write_df_as_text(df, f"time_at_{self.current_jj}", "exploration_time/")
 
                 for m in range(8):
-                    sleep = min(1.5 * self.current_jj + math.sqrt(self.current_jj + 1) , 15)
-                    #rospy.loginfo(f"sleep for {sleep}s.")
-                    rospy.sleep(sleep)
+                    #sleep = min(1 * self.current_jj + math.sqrt(self.current_jj + 1) , 11)
+
+                    
+                    
+
                     self.current_m = m
-                    #rospy.loginfo(f"we are at test {jj}, m is {m}")
+                    rospy.loginfo(f"we are at test {jj}, m is {m}")
 
                     # mvo + ga centralised
                     if m == 0:
@@ -397,6 +406,9 @@ class CoordinatorNode:
                             self.bestCMVOGA[jj]=best_CMVOGA
                             self.bestCMVOGAmax[jj]=best_CMVOGA
                             self.bestCMVOGAmin[jj]=best_CMVOGA
+                        rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CMVOGA} solve {tmvoga} " )
+                        
+                    
                     # ga centralised
                     if m == 1:
                         best_CGA,  _ , tga = self.exploitation(MAX_ITERATIONS, SWARM_SIZE, robot_charge_duration, robots_coord, self.cached_tasks, 
@@ -414,24 +426,12 @@ class CoordinatorNode:
                             self.bestCGA[jj]=best_CGA
                             self.bestCGAmax[jj]=best_CGA
                             self.bestCGAmin[jj]=best_CGA
-
-                    # mvo + ga distributed  
-                    if m == 2:
-                        array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, SWARM_SIZE, self.M)
-
-                        self.send_parameters(robots_info, self.cached_tasks, universes, array_allocation, num_cols=self.M)
-                    
-                    # ga distributed
-                    if m == 3:
-                        array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, SWARM_SIZE, self.M)
-
-                        self.send_parameters(robots_info, self.cached_tasks, universes, array_allocation, num_cols=self.M)
-                        
+                        rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CGA} solve {tga} " )
 
 
 
                     # mvo + pso centralised
-                    if m == 4:
+                    if m == 2:
                         best_CMVOPSO, tmvopso , _= self.exploitation(MAX_ITERATIONS, len(universes), robot_charge_duration, robots_coord, self.cached_tasks, 
                                 Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, "pso", universes)
 
@@ -447,8 +447,9 @@ class CoordinatorNode:
                             self.bestCMVOPSO[jj]=best_CMVOPSO
                             self.bestCMVOPSOmax[jj]=best_CMVOPSO
                             self.bestCMVOPSOmin[jj]=best_CMVOPSO
+                        rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CMVOPSO} solve {tmvopso} " )
                     # pso centralised
-                    if m == 5:
+                    if m == 3:
                         best_CPSO, tpso ,_ = self.exploitation(MAX_ITERATIONS, SWARM_SIZE, robot_charge_duration, robots_coord, self.cached_tasks, 
                                 Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, "pso")
                         self.all_tCPSO[self.current_jj].append(tpso)
@@ -463,25 +464,55 @@ class CoordinatorNode:
                             self.bestCPSO[jj]=best_CPSO
                             self.bestCPSOmax[jj]=best_CPSO
                             self.bestCPSOmin[jj]=best_CPSO
+                        rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CPSO} solve {tpso} " )
+
+
+
+
+
+                    # mvo + ga distributed  
+                    if m == 4:
+                        array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, SWARM_SIZE, self.M)
+
+                        self.send_parameters(robots_info, self.cached_tasks, universes, array_allocation, num_cols=self.M)
+                    
+                    # ga distributed
+                    if m == 5:
+                        array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, SWARM_SIZE, self.M)
+
+                        self.send_parameters(robots_info, self.cached_tasks, universes, array_allocation, num_cols=self.M)
+                        
+
 
                     # mvo + pso distributed  
                     if m == 6:
                         array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, SWARM_SIZE, len(self.cached_tasks))
 
                         self.send_parameters(robots_info, self.cached_tasks, universes, array_allocation, num_cols=self.M)
+                    
                     # pso distributed
                     if m == 7:
                         array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, SWARM_SIZE, len(self.cached_tasks))
 
                         self.send_parameters(robots_info, self.cached_tasks, universes, array_allocation, num_cols=self.M)
 
+                    if m in {4,5,6,7}:
+                        while not self.received:
+                            rospy.sleep(1)
+                        rospy.loginfo(f"received is {self.received}")
+                        self.received = False
+
                         
                     #CSV_FILE = 'data/coord_timing_central.csv'
                     #log_coordinator_timing(pso_time=pso_c, CSV_FILE=CSV_FILE)
             self.M += 5
+        rospy.sleep(15)
         self.plot()
+
         self.std_mean_avg()
+
         self.relative_errors()
+        rospy.loginfo("end")
         rospy.spin()
 
 
@@ -564,8 +595,8 @@ class CoordinatorNode:
         CHARGING_TIME = 0.5 * 3600  # s
         iterationstop = 15
         Charging_station = (-1.6, 7.2)
-        SWARM_SIZE = 100
-        POP_SIZE = 10
+        SWARM_SIZE = 150
+        POP_SIZE = 150
         MAX_ITERATIONS = 50
 
 
@@ -592,7 +623,7 @@ class CoordinatorNode:
                 Charging_station, CHARGING_TIME, Energy_Harvesting_Rate):
         
         start_exp = time.time()
-        init_swarm = mvo_exploration(
+        init_swarm , _ , _= multiverse_algorithm(
                 MAX_ITERATIONS=MAX_ITERATIONS,
                 SWARM_SIZE=swarm_size,
                 M=self.M, N=self.N, 
@@ -673,17 +704,17 @@ class CoordinatorNode:
         plt.grid(True)
         plt.savefig(os.path.join(directory, 'completion_time'))
 
-
+        rospy.loginfo(f'{self.tDMVOGA} and {self.tDGA}')
 
 
         plt.figure(figsize=(10, 6))
         plt.plot(self.MM, self.tCMVOGA, marker="o", linestyle="-", color="black", label="tCMVOGA")
         plt.plot(self.MM, self.tCGA, marker="*", linestyle="-", color="yellow", label="tCGA")
-        plt.plot(self.MM, self.tDMVOGA, marker="o", linestyle="-", color="blue", label="mtDMVOGA")
+        plt.plot(self.MM, self.tDMVOGA, marker="o", linestyle="-", color="blue", label="tDMVOGA")
         plt.plot(self.MM, self.tDGA, marker="*", linestyle="-", color="olive", label="tDGA")
         plt.plot(self.MM, self.tCMVOPSO, marker="o", linestyle="-", color="red", label="tCMVOPSO")
         plt.plot(self.MM, self.tCPSO, marker="*", linestyle="-", color="green", label="tCPSO")
-        plt.plot(self.MM, self.tDMVOPSO, marker="o", linestyle="-", color="cyan", label="mtDMVOPSO")
+        plt.plot(self.MM, self.tDMVOPSO, marker="o", linestyle="-", color="cyan", label="tDMVOPSO")
         plt.plot(self.MM, self.tDPSO, marker="*", linestyle="-", color="magenta", label="tDPSO")
 
         plt.xlabel("M number of tasks")

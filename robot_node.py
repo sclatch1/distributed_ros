@@ -93,7 +93,7 @@ class RobotNode:
         self.j = msg.j
         self.communication_time[self.j]=(communicate+self.communication_time[self.j]* self.i) / (self.i + 1)
         self.communication_time_all[self.j].append(communicate)
-        if self.i == 4:
+        if self.i == 4 and (self.j == 0 or self.j == (self.Ntest -1)):
             std = np.std(self.communication_time_all[self.j])
             df = pd.DataFrame({'Std_Comm_Time': [std]})
             write_df_as_text(df,f"std_{self.name}_{self.j}" , "std_communication" )
@@ -139,7 +139,7 @@ class RobotNode:
         CHARGING_TIME = 0.5 * 3600  # s
         iterationstop = 15
         Charging_station = (-1.6, 7.2)
-        POP_SIZE = 100
+        POP_SIZE = 150
         MAX_ITERATIONS = 50
 
         N = len(self.cached_robot_statuses)  # number of robots

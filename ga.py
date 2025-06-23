@@ -47,6 +47,7 @@ def genetic_algorithm(POP_SIZE,M,N,iteration,iterationstop,robot_charge_duration
         population = initialize_population(POP_SIZE, M, N)
     else:
         population = copy.deepcopy(init_swarm)
+
     #write_np_to_file(population, 'ga_population', 'population_output') 
     #print(population[0])
     fitnesses=[]
