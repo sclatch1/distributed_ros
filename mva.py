@@ -11,9 +11,7 @@ def multiverse_algorithm(MAX_ITERATIONS,
                         task,
                         Charging_station,
                         CHARGING_TIME,
-                        Energy_Harvesting_Rate,
-                        eps=0.2,
-                        capture_steps=False):
+                        Energy_Harvesting_Rate):
     """
     Multiverse Algorithm (MVA) implementation based on multiverse theory
     
@@ -34,7 +32,7 @@ def multiverse_algorithm(MAX_ITERATIONS,
     """
 
     MAX_ITERATIONS = 50
-    
+    eps = max(1, M * 0.05)
 
     
     # Step 1: Initialize population (Algorithm 1)
@@ -76,16 +74,8 @@ def multiverse_algorithm(MAX_ITERATIONS,
         universes, fitness_vals = update_population(universes, fitness_vals,
                                                   new_universes, new_fitness_vals)
         
-        # Capture Step 5: Explosion (at later stage)
-        if capture_steps: #and k == int(MAX_ITERATIONS * 0.7):
-            # Generate explosion visualization
-            explosion_universes = explosion_of_solutions(universes, fitness_vals, 
-                                                       M, N, eps, k, MAX_ITERATIONS)
-            explosion_fitness = np.array([
-                fitness(u, robot_charge_duration, robots_coord,
-                        task, Charging_station, CHARGING_TIME, Energy_Harvesting_Rate)[0]
-                for u in explosion_universes
-            ])
+
+        
 
         # Update best solution
         current_best_idx = np.argmin(fitness_vals)

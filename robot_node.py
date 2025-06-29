@@ -25,36 +25,36 @@ from utilities import write_np_to_file, write_to_file, write_df_as_text
 
 class RobotNode:
     def __init__(self):
-        # 1) Read env‑vars into self
         self.name     = os.environ.get("ROBOT_NAME", "robot")
         self.x        = float(os.environ.get("ROBOT_X", "0.0"))
         self.y        = float(os.environ.get("ROBOT_Y", "0.0"))
         self.battery  = float(os.environ.get("BATTERY", "100.0"))
         self.Ntest    = 1
-        self.communication_time = np.zeros(self.Ntest)
-        self.communication_time_all = [[] for _ in range(self.Ntest)] 
-        self.m        = 0 
+        self.m        = 0
+        self.j       = 0 
+        self.i  = 0
+        self.SWARM_SIZE = 120
+        self.N = 30
         # plus any cached_* lists (initialize to None or empty)
         self.cached_tasks = []
         self.cached_universe = np.empty((0,0))
         self.cached_robot_statuses = []
-        # 2) ROS init
+
         rospy.init_node(self.name)
 
-        # 3) Advertise service
+        # Advertise service
         srv_name = f"/get_robot_status_{self.name}"
         rospy.Service(srv_name, RobotStatus, self.handle_status_request)
         #rospy.loginfo(f"[{self.name}] Ready to respond on service {srv_name}")
 
-        # 4) Publisher for fitness
+
         self.fitness_pub = rospy.Publisher('/fitness_value', FitnessValue, queue_size=10)
 
-        # 5) Subscribe to parameters
+
         topic = f"/{self.name}/parameters"
         rospy.Subscriber(topic, Parameters, self.parameters_callback)
         #rospy.loginfo(f"[{self.name}] Subscribed to {topic}")
 
-    # 6) Move your free functions in as methods:
     def cach_task(self, msg):
             #rospy.loginfo("Received task array")
         tasks = []
@@ -76,58 +76,65 @@ class RobotNode:
     def cach_robot_status(self, msg):
         self.cached_robot_statuses = msg.status
 
-    # 7) The big parameters handler becomes:
     def parameters_callback(self, msg):
-        send_time = msg.header.stamp
         recv_time = rospy.Time.now()
+        send_time = msg.start_communication
         
-        if self.m <= 7:
-            self.m += 1
-        else:
-            self.m = 0
 
-        communicate = (recv_time - send_time).to_sec()
+
+        communicate = (recv_time - send_time)
+
+ 
 
         # cached the tasks in cached_tasks global variable
+        
         self.cach_task(msg)
         self.cach_robot_status(msg)
         self.cach_universe(msg)
-        self.communication_time[self.j]=(communicate+self.communication_time[self.j]* self.i) / (self.i + 1)
-        self.communication_time_all[self.j].append(communicate)
-        if self.i == 4 and (self.j == 0 or self.j == (self.Ntest -1)):
-            std = np.std(self.communication_time_all[self.j])
-            df = pd.DataFrame({'Std_Comm_Time': [std]})
-            write_df_as_text(df,f"std_{self.name}_{self.j}" , "std_communication" )
-            write_to_file(self.communication_time, "communication_time/" ,f"comm_time_{self.name}_{self.j}_{self.m}")
-        #rospy.loginfo(f"got parameters for {self.name} will start explotation with m = {self.m}")
+        self.m = msg.m
+        self.i = msg.i
+        self.j = msg.j
+        #rospy.loginfo(f"this is m {self.m} {msg.m}")
+        #rospy.loginfo(f"for j {self.j}  i {self.i} m {self.m}")
+
         best, start_time = self.run_explotation()
         #rospy.loginfo(f"for m {self.m}, j {self.j} and fitness {best}")
+        
 
         val = FitnessValue(fitness=best)
-
+        val.communication_time = communicate
+        
         
         while self.fitness_pub.get_num_connections() == 0:
             rospy.logwarn(f"Waiting for subscriber on /{self.name}/fitness.")
             rospy.sleep(0.05)
 
-        val.communication = rospy.Time.now()
+        rospy.loginfo(f"this is m {self.m} {msg.m}")
         val.start_time = start_time
+        val.m = self.m
+        val.j = self.j
+        val.i = self.i
+        val.start_com = rospy.Time.now()
+        rospy.sleep(0.002) # communication delay
+
         self.fitness_pub.publish(val)
         
         #rospy.loginfo(f"[{robot_name}] /fitness_value publisher connections: {fitness_pub.get_num_connections()}")
     
         #rospy.signal_shutdown("fitness value sent. Shutting down")
 
-    # 8) Your service handler as a method:
+
+
     def handle_status_request(self, req):
-        #rospy.loginfo(f"[{robot_name}] Status requested.")
+        #rospy.loginfo(f"[{self.name}] Status requested.")
         res = RobotStatusResponse()
         res.robot_name = self.name
         res.position = Point(x=self.x, y=self.y, z=0.0)
         res.battery = self.battery
+
         return res
 
-    # 9) Exploitation runner can stay a free function or become:
+
     def run_explotation(self):
         Energy_Harvesting_Rate = 3
         MAX_CHARGE = 20
@@ -137,7 +144,7 @@ class RobotNode:
         CHARGING_TIME = 0.5 * 3600  # s
         iterationstop = 15
         Charging_station = (-1.6, 7.2)
-        POP_SIZE = 150
+        POP_SIZE = self.SWARM_SIZE
         MAX_ITERATIONS = 50
 
         N = len(self.cached_robot_statuses)  # number of robots
@@ -147,7 +154,7 @@ class RobotNode:
         if self.m in {0,2,4,6}:
             POP_SIZE = len(self.cached_universe)
         else:
-            POP_SIZE = int(POP_SIZE/5)
+            POP_SIZE = int(POP_SIZE/self.N)
             self.cached_universe = np.empty((0,))
 
 
@@ -162,7 +169,7 @@ class RobotNode:
 
         robots_coord = np.array(robots_coord)
         
-        if self.m <= 3:
+        if self.m in {4,5}:
             """
             if len(self.cached_universe) > 0:
                 write_np_to_file(self.cached_universe, f"GA_{self.m}", f"data/universes/{self.name}")
@@ -183,7 +190,7 @@ class RobotNode:
         
         return best_fitness, start_time
 
-    # 10) Finally a run() to spin:
+
     def run(self):
         rospy.spin()
 

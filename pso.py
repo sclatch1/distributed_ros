@@ -39,9 +39,7 @@ def PSO_Algorithm(
     Energy_Harvesting_Rate,
     init_swarm=None
 ):
-    """
-    Enhanced PSO with personal bests, inertia decay, velocity clamping, and reproducible seeds.
-    """
+
     # --- PSO Hyperparameters ---
     C1 = 2.0  # cognitive coefficient
     C2 = 2.0  # social coefficient

@@ -704,7 +704,8 @@ services:
       context: .
       dockerfile: robot_docker/Dockerfile
     container_name: robot36
-
+    profiles:
+      - robots
 
     networks: [ rosnet ]
     environment:

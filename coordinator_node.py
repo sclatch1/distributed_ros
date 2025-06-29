@@ -29,7 +29,7 @@ from robot_msgs.srv import RobotStatus
 from dataclasses import dataclass
 from typing import List, Tuple
 
-from utilities import log_coordinator_timing, write_to_file, write_np_to_file, write_df_as_text
+from utilities import write_df_as_text
 
 E_ELEC = 50e-9     # energy per bit for electronics (J)
 E_AMP = 100e-12    # energy per bit per m^2 (J)
@@ -51,7 +51,7 @@ class CoordinatorNode:
     def __init__(self):
         self.coordinator_coords = (0,0)
         self.timings = {}
-        self.Ntest = 1
+        self.Ntest = 3
         self.MM = np.zeros(self.Ntest)
 
         # parameters for functions
@@ -83,11 +83,12 @@ class CoordinatorNode:
         rospy.Subscriber('/fitness_value', FitnessValue, self.fitness_value_callback)
 
         # run() variables
-        self.M = 100
-        self.N = 40
+        self.M = 200
+        self.N = 30
+        self.SWARM_SIZE = 120
         self.MM = np.zeros(self.Ntest)
         self.received = False
-
+        self.average_run = 1
         self.allocator = ExplorationAllocator(BYTES_PER_INT,BITS_PER_BYTE,E_ELEC,E_AMP,PATH_LOSS_EXPONENT)
 
 
@@ -152,12 +153,14 @@ class CoordinatorNode:
         
 
 
-        self.communication_time_all = [[] for _ in range(self.Ntest)] 
+        #self.communication_time_all = [[] for _ in range(self.Ntest)] 
         self.tmvo_all = [[] for _ in range(self.Ntest)] 
 
 
         self.communication_time = np.zeros(self.Ntest)
+        self.communication_time_all =  [[] for _ in range(self.Ntest)]  
         self.tMVO = np.zeros(self.Ntest)
+        self.com_times = []
         #self.communication_time1 = np.zeros(self.Ntest)
 
     def reset_iteration_data(self):
@@ -165,6 +168,8 @@ class CoordinatorNode:
         self.fitnesses.clear()
         self.start_time = None
         self.best_fitness = None
+        self.solve_time = 0
+        self.com_times.clear()
         #rospy.loginfo(f"resetting {self.fitnesses} {self.start_time} {self.best_fitness}")
 
 
@@ -173,23 +178,10 @@ class CoordinatorNode:
         #rospy.loginfo("calling robot status")
         rospy.wait_for_service(service_name)
         try:
-            start = rospy.Time.now()
-            get_status = rospy.ServiceProxy(service_name, RobotStatus)
-            end = rospy.Time.now()
-
-            self.timings[robot_name] = (end - start).to_sec()
-
-            if len(self.timings) == self.N:
-                communicate = max(self.timings.values())
-                self.communication_time_all[self.current_jj].append(communicate)
-                self.communication_time[self.current_jj]=(communicate+self.communication_time[self.current_jj]* self.current_ii) / (self.current_ii + 1)
-                if (self.current_jj == 0 or self.current_jj == (self.Ntest -1)):
-                    std = np.std(self.communication_time_all[self.current_jj])
-                    mean = self.communication_time[self.current_jj]
-                    df = pd.DataFrame({'Std_Comm_Time': [std], 'mean_comm_time': [mean]})
-                    write_df_as_text(df, f"coordinator_{self.current_jj}", f"std_communication_c/")
-                self.timings.clear()
             
+            
+            get_status = rospy.ServiceProxy(service_name, RobotStatus)
+
             #rospy.loginfo(f"this is the com time: {self.communication_time}")
             resp = get_status() 
             #rospy.loginfo(f"Got status from {robot_name}: Position({resp.position.x}, {resp.position.y}), Battery: {resp.battery}%")
@@ -202,12 +194,10 @@ class CoordinatorNode:
     def get_robot_info(self):
         robot_names = ['robot1', 'robot2', 'robot3', 'robot4', 'robot5', 'robot6', 'robot7',
                     'robot8', 'robot9', 'robot10', 'robot11', 'robot12', 'robot13', 'robot14'
-                    , 'robot15', 'robot16', 'robot17', 'robot18', 'robot19', 'robot20'
                     ,'robot15', 'robot16', 'robot17', 'robot18', 'robot19', 'robot20',
-                    'robot1','robot21','robot22','robot23','robot24','robot25','robot26',
+                    'robot21','robot22','robot23','robot24','robot25','robot26',
                     'robot27','robot28','robot29','robot30','robot31','robot32','robot33',
-                    'robot34','robot35','robot36','robot37','robot38','robot39','robot40'] 
-
+                    'robot34','robot35','robot36','robot37','robot38','robot39','robot40']
         
         robot_names = robot_names[0:self.N]
 
@@ -238,10 +228,14 @@ class CoordinatorNode:
 
     def fitness_value_callback(self, msg):
         recv_time = rospy.Time.now()
-        m = msg.m
+        m_ = msg.m
         current_jj = msg.j
         current_ii = msg.i
-        rospy.loginfo(f"this is ii {current_ii} and m is {m} " )
+        com_time = msg.communication_time
+        start_com = msg.start_com
+        
+        self.com_times.append(com_time.to_sec())
+        rospy.loginfo(f"this is ii {self.current_ii} and m is {m_} " )
 
 
         self.fitnesses[recv_time] = msg.fitness
@@ -251,14 +245,28 @@ class CoordinatorNode:
 
         if self.best_fitness is None or msg.fitness < self.best_fitness:
             self.best_fitness = msg.fitness
-            self.solve_time = (recv_time - self.start_time).to_sec()
+            com_time = max(self.com_times)     
+            self.solve_time = (recv_time - self.start_time ).to_sec() + com_time
+            self.whole_com = (recv_time - start_com).to_sec() + com_time
 
 
         if len(self.fitnesses) == self.N:            
             self.received = True
-            rospy.loginfo(f"this is jj {current_jj} and m is {m} and fitness is {self.best_fitness} solve {self.solve_time} " )
+            rospy.loginfo(f"d this is jj {current_jj} and m is {m_} and fitness is {self.best_fitness} solve {self.solve_time} " )
+            
+            self.communication_time[self.current_jj]=(self.whole_com+self.communication_time[self.current_jj]* self.current_ii) / (self.current_ii + 1)
+            self.communication_time_all[self.current_jj].append(self.whole_com)
+            if self.current_ii == self.average_run-1 and (self.current_jj == 0 or self.current_jj == (self.Ntest -1)):
+                std = np.std(self.communication_time[self.current_jj])
+                mean = self.communication_time[self.current_jj]
+                data = {
+                    "std" : std,
+                    "mean" : mean,
+                }
+                df = pd.DataFrame(data, index=[0])
+                write_df_as_text(df, f"time_at_{self.current_jj}", "communication_time/")
 
-            if m == 4:
+            if m_ == 4:
                 self.all_tDMVOGA[current_jj].append(self.solve_time)
                 if current_ii!=0:
                     self.bestDMVOGA[current_jj]=max(self.bestDMVOGAmax[current_jj] , self.best_fitness)
@@ -272,7 +280,7 @@ class CoordinatorNode:
                     self.bestDMVOGAmax[current_jj]=self.best_fitness
                     self.bestDMVOGAmin[current_jj]=self.best_fitness
 
-            elif m == 5:
+            elif m_ == 5:
                 self.all_tDGA[current_jj].append(self.solve_time)
                 if current_ii!=0:
                     self.bestDGA[current_jj]=max(self.bestDGAmax[current_jj] , self.best_fitness)
@@ -286,7 +294,7 @@ class CoordinatorNode:
                     self.bestDGAmax[current_jj]=self.best_fitness
                     self.bestDGAmin[current_jj]=self.best_fitness
             
-            elif m == 6:
+            elif m_ == 6:
                 self.all_tDMVOPSO[current_jj].append(self.solve_time)
                 if current_ii!=0:
                     self.bestDMVOPSO[current_jj]=max(self.bestDMVOPSOmax[current_jj] , self.best_fitness)
@@ -300,7 +308,7 @@ class CoordinatorNode:
                     self.bestDMVOPSOmax[current_jj]=self.best_fitness
                     self.bestDMVOPSOmin[current_jj]=self.best_fitness
 
-            elif m == 7:
+            elif m_ == 7:
                 self.all_tDPSO[current_jj].append(self.solve_time)
                 if current_ii!=0:
                     self.bestDPSO[current_jj]=max(self.bestDPSOmax[current_jj] , self.best_fitness)
@@ -313,8 +321,27 @@ class CoordinatorNode:
                     self.bestDPSO[current_jj]=self.best_fitness
                     self.bestDPSOmax[current_jj]=self.best_fitness
                     self.bestDPSOmin[current_jj]=self.best_fitness
-
+            #rospy.sleep(1)
+            #self.received = False
+            #sleep = 5
+            #rospy.sleep(sleep)
+            #rospy.loginfo(f"sleeping for {sleep}s")
+            """
+            rospy.loginfo(f"BESTtDMVOPSO {self.tDMVOPSO}")
+            rospy.loginfo(f"BESTtDMVOGA {self.tDMVOGA}")
+            rospy.loginfo(f"BESTtDPSO {self.tDPSO}")
+            rospy.loginfo(f"BESTtDGA {self.tDGA}")
+            rospy.loginfo(f"BESTtCMVOPSO {self.tCMVOPSO}")
+            rospy.loginfo(f"BESTtCMVOGA {self.tCMVOGA}")
+            rospy.loginfo(f"BESTtCPSO {self.tCPSO}")
+            rospy.loginfo(f"BESTtCGA {self.tCGA}")
+            """
             self.reset_iteration_data()
+            
+
+
+            #rospy.signal_shutdown("All fitness values received.")
+
             
 
 
@@ -329,31 +356,31 @@ class CoordinatorNode:
             # getting the tasks
             self.m_pub.publish(Int32(data=self.M))
 
-            rospy.sleep(1)
-            
+            rospy.sleep(6)
+
             # getting the robots location and battery level
             robots_info = self.get_robot_info()
 
-            self.timings.clear()
             
-            MAX_ITERATIONS, SWARM_SIZE, \
-                    robot_charge_duration, robots_coord, \
+            
+            MAX_ITERATIONS,  robot_charge_duration, robots_coord, \
                     Charging_station, CHARGING_TIME, Energy_Harvesting_Rate,\
                     = self.init_enivornment(robots_info)
 
 
 
-            for ii in range(1):
+            for ii in range(self.average_run):
                 self.current_ii = ii
-                #rospy.loginfo("go to sleep...")
-                universes, tmvo = self.explore(MAX_ITERATIONS, SWARM_SIZE, 
+
+                universes, tmvo = self.explore(MAX_ITERATIONS, self.SWARM_SIZE, 
                         robot_charge_duration, robots_coord, self.cached_tasks, 
                         Charging_station, CHARGING_TIME, Energy_Harvesting_Rate)
                 self.tMVO[self.current_jj]=(tmvo+self.tMVO[self.current_jj]* self.current_ii) / (self.current_ii + 1)
 
+                rospy.loginfo(f"running mvo time {tmvo}")
 
                 self.tmvo_all[self.current_jj].append(tmvo)
-                if self.current_ii == 4 and (self.current_jj == 0 or self.current_jj == (self.Ntest -1)):
+                if self.current_ii == self.average_run-1 and (self.current_jj == 0 or self.current_jj == (self.Ntest -1)):
                     std = np.std(self.tmvo_all[self.current_jj])
                     mean = self.tMVO[self.current_jj]
                     data = {
@@ -368,11 +395,11 @@ class CoordinatorNode:
 
                 for m in range(8):
                     #sleep = min(1 * self.current_jj + math.sqrt(self.current_jj + 1) , 11)
-
-                    
-                    
-
                     self.current_m = m
+                    
+                    if self.current_m in {0,1,2,3}:
+                        continue
+                    
                     rospy.loginfo(f"we are at test {jj}, m is {m}")
 
                     # mvo + ga centralised
@@ -401,7 +428,7 @@ class CoordinatorNode:
                     
                     # ga centralised
                     if m == 1:
-                        best_CGA,  _ , tga = self.exploitation(MAX_ITERATIONS, SWARM_SIZE, robot_charge_duration, robots_coord, self.cached_tasks, 
+                        best_CGA,  _ , tga = self.exploitation(MAX_ITERATIONS, self.SWARM_SIZE, robot_charge_duration, robots_coord, self.cached_tasks, 
                                 Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, "ga")
 
                         self.all_tCGA[self.current_jj].append(tga)
@@ -440,7 +467,7 @@ class CoordinatorNode:
                         rospy.loginfo(f"this is jj {self.current_jj} and m is {m} and fitness is {best_CMVOPSO} solve {tmvopso} " )
                     # pso centralised
                     if m == 3:
-                        best_CPSO, tpso ,_ = self.exploitation(MAX_ITERATIONS, SWARM_SIZE, robot_charge_duration, robots_coord, self.cached_tasks, 
+                        best_CPSO, tpso ,_ = self.exploitation(MAX_ITERATIONS, self.SWARM_SIZE, robot_charge_duration, robots_coord, self.cached_tasks, 
                                 Charging_station, CHARGING_TIME, Energy_Harvesting_Rate, "pso")
                         self.all_tCPSO[self.current_jj].append(tpso)
                         if ii!=0:
@@ -462,13 +489,13 @@ class CoordinatorNode:
 
                     # mvo + ga distributed  
                     if m == 4:
-                        array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, SWARM_SIZE, self.M)
+                        array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, self.SWARM_SIZE, self.M)
 
                         self.send_parameters(robots_info, self.cached_tasks, universes, array_allocation, num_cols=self.M)
                     
                     # ga distributed
                     if m == 5:
-                        array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, SWARM_SIZE, self.M)
+                        array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, self.SWARM_SIZE, self.M)
 
                         self.send_parameters(robots_info, self.cached_tasks, universes, array_allocation, num_cols=self.M)
                         
@@ -476,13 +503,13 @@ class CoordinatorNode:
 
                     # mvo + pso distributed  
                     if m == 6:
-                        array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, SWARM_SIZE, len(self.cached_tasks))
+                        array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, self.SWARM_SIZE, len(self.cached_tasks))
 
                         self.send_parameters(robots_info, self.cached_tasks, universes, array_allocation, num_cols=self.M)
                     
                     # pso distributed
                     if m == 7:
-                        array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, SWARM_SIZE, len(self.cached_tasks))
+                        array_allocation = self.allocator.allocate_exploration(self.coordinator_coords, robots_coord, self.SWARM_SIZE, len(self.cached_tasks))
 
                         self.send_parameters(robots_info, self.cached_tasks, universes, array_allocation, num_cols=self.M)
 
@@ -495,7 +522,7 @@ class CoordinatorNode:
                         
                     #CSV_FILE = 'data/coord_timing_central.csv'
                     #log_coordinator_timing(pso_time=pso_c, CSV_FILE=CSV_FILE)
-            self.M += 5
+            self.M += 150
         rospy.sleep(15)
         self.plot()
 
@@ -539,7 +566,8 @@ class CoordinatorNode:
 
         flat_index = 0  # pointer in universes
         for i, robot in enumerate(robots_info):
-            rows = array_allocation[i]
+            #rows = array_allocation[i]
+            rows = int(self.SWARM_SIZE / self.N)
             universe_slice = universes[flat_index:flat_index + rows]
             flat_index += rows
 
@@ -557,20 +585,29 @@ class CoordinatorNode:
             msg.m = self.current_m
             msg.j = self.current_jj
             msg.i = self.current_ii
-
+            msg.robot_name = robot.name
+            
             pub = publishers[robot.name]
 
             # Wait for at least one subscriber
             while pub.get_num_connections() < 1:
                 rospy.logwarn(f"Waiting for subscriber on /{robot.name}/parameters...")
-                rospy.sleep(2)
+                rospy.sleep(0.05)
+            #rospy.loginfo(f"Sending parameters to robot {robot.name} with rows={rows} starting at universe index {flat_index-rows}")
 
+            time_to_sleep = self.calculate_communication_time(rows)
+            #rospy.loginfo(f"this is the time to sleep {time_to_sleep}")
+            msg.start_communication = rospy.Time.now()
+            rospy.sleep(time_to_sleep)
 
             
-            msg.start_communication = rospy.Time.now()
             pub.publish(msg)
 
-    
+    def calculate_communication_time(self, rows):
+        message_bits = (rows * self.M * 32) + 480
+        return message_bits/250000 
+
+
     def init_enivornment(self, robots_info: List[RobotStatusInfo]):
         # Use actual coordinates from robots_info instead of hardcoded coords
         print("initializing environment ...")
@@ -585,17 +622,11 @@ class CoordinatorNode:
         CHARGING_TIME = 0.5 * 3600  # s
         iterationstop = 15
         Charging_station = (-1.6, 7.2)
-        SWARM_SIZE = 150
         POP_SIZE = 150
         MAX_ITERATIONS = 50
 
-
-
-
         N = len(robots_info)  # number of robots
         M = len(self.cached_tasks)
-
-
 
 
         # Instead of random charge duration, calculate from battery percentage
@@ -603,10 +634,7 @@ class CoordinatorNode:
         robot_charge_duration = [(r.battery / 100.0) * 20 * 3600 for r in robots_info]
         robots_coord = coords
 
-
-        
-
-        return MAX_ITERATIONS, SWARM_SIZE, robot_charge_duration, robots_coord, Charging_station, CHARGING_TIME, Energy_Harvesting_Rate
+        return MAX_ITERATIONS, robot_charge_duration, robots_coord, Charging_station, CHARGING_TIME, Energy_Harvesting_Rate
     
 
     def explore(self, MAX_ITERATIONS, swarm_size, robot_charge_duration, robots_coord, task, 
@@ -678,7 +706,7 @@ class CoordinatorNode:
 
 
 
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(14, 6))
         plt.plot(self.MM, self.bestCMVOPSO, marker="o", linestyle="--", color="red", label="best_CMVOPSO")
         plt.plot(self.MM, self.bestCPSO, marker="*", linestyle="--", color="green", label="best_CPSO")
         plt.plot(self.MM, self.bestCMVOGA, marker="o", linestyle="--", color="black", label="best_CMVOGA")

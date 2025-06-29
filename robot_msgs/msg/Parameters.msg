@@ -1,6 +1,10 @@
-time start_communication
 int32[] universe
 int32 rows
 int32 cols
 RobotStatusM[] status
 robot_msgs/DropTask[] tasks
+int32 j
+int32 i
+int32 m
+string robot_name
+time start_communication
